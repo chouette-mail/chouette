@@ -17,20 +17,20 @@ main =
 
 
 type alias Account =
-    { email : String
+    { username : String
+    , email : String
     , password : String
-    , imapServer : String
     }
 
 
 emptyAccount : Account
 emptyAccount =
-    { email = "", password = "", imapServer = "" }
+    { username = "", email = "", password = "" }
 
 
 type NewAccountFormMessage
-    = EmailChanged String
-    | ImapServerChanged String
+    = UsernameChanged String
+    | EmailChanged String
     | PasswordChanged String
     | NewAccountSubmitted
 
@@ -63,14 +63,14 @@ update msg model =
 updateNewAccountForm : NewAccountFormMessage -> Model -> Model
 updateNewAccountForm msg model =
     case ( msg, model ) of
+        ( UsernameChanged newUsername, NewAccount currentAccount ) ->
+            NewAccount { currentAccount | username = newUsername }
+
         ( EmailChanged newEmail, NewAccount currentAccount ) ->
             NewAccount { currentAccount | email = newEmail }
 
         ( PasswordChanged newPassword, NewAccount currentAccount ) ->
             NewAccount { currentAccount | password = newPassword }
-
-        ( ImapServerChanged newImapServer, NewAccount currentAccount ) ->
-            NewAccount { currentAccount | imapServer = newImapServer }
 
         ( NewAccountSubmitted, NewAccount currentAccount ) ->
             Home currentAccount
@@ -118,17 +118,17 @@ homeView account =
 newAccountView account =
     Element.layout defaultAttributes
         (Element.column (centerX :: defaultAttributes)
-            [ Input.email defaultAttributes
+            [ Input.text defaultAttributes
+                { onChange = NewAccountFormMessage << UsernameChanged
+                , label = Input.labelAbove (centerY :: defaultAttributes) (text "Username")
+                , placeholder = Nothing
+                , text = account.username
+                }
+            , Input.email defaultAttributes
                 { onChange = NewAccountFormMessage << EmailChanged
                 , label = Input.labelAbove (centerY :: defaultAttributes) (text "Email address")
                 , placeholder = Nothing
                 , text = account.email
-                }
-            , Input.text defaultAttributes
-                { onChange = NewAccountFormMessage << ImapServerChanged
-                , label = Input.labelAbove (centerY :: defaultAttributes) (text "IMAP server address")
-                , placeholder = Nothing
-                , text = account.imapServer
                 }
             , Input.newPassword defaultAttributes
                 { onChange = NewAccountFormMessage << PasswordChanged

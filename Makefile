@@ -17,14 +17,14 @@ client-static: client/static/*
 	@cp $(STATIC_FILES) $(BUILD_DIR)
 	@/bin/echo -e "\033[32;1m      Copied\033[0m chouette-client static files"
 
-client-dev: client/src/**
+client-dev: client/src/** client-static
 	@/bin/echo -e "\033[32;1m   Compiling\033[0m chouette-client"
 	@cd client && $(ELM) make src/Main.elm --output ../$(BUILD_DIR)/main.js
 	@/bin/echo -e "\033[32;1m    Finished\033[0m chouette-client"
 
 client-watch:
 	@/bin/echo -e "\033[32;1m    Watching\033[0m chouette-client"
-	@cd client && $(ELMLIVE) src/Main.elm -d build -- --output ../$(BUILD_DIR)/main.js
+	@cd client && $(ELMLIVE) src/Main.elm -d ../$(BUILD_DIR)/ -- --output ../$(BUILD_DIR)/main.js
 
 server-dev:
 	@cd server && cargo build
