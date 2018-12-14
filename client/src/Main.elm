@@ -6,10 +6,17 @@ import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
+import Http
+import Json.Encode
 
 
 main =
-    Browser.sandbox { init = initialScreen, update = update, view = view }
+    Browser.element
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
+        }
 
 
 
@@ -28,6 +35,15 @@ emptyAccount =
     { username = "", email = "", password = "" }
 
 
+accountToJson : Account -> Json.Encode.Value
+accountToJson account =
+    Json.Encode.object
+        [ ( "username", Json.Encode.string account.username )
+        , ( "email", Json.Encode.string account.email )
+        , ( "password", Json.Encode.string account.password )
+        ]
+
+
 type NewAccountFormMessage
     = UsernameChanged String
     | EmailChanged String
@@ -38,45 +54,70 @@ type NewAccountFormMessage
 type Msg
     = NewAccountClicked
     | NewAccountFormMessage NewAccountFormMessage
+    | NewAccountRegistered (Result Http.Error String)
 
 
 type Model
     = LogIn
+    | Subscribing Account
     | Home Account
     | NewAccount Account
+
+
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( LogIn, Cmd.none )
 
 
 
 -- UPDATES --------------------------------------------------------------------
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NewAccountClicked ->
-            NewAccount emptyAccount
+            ( NewAccount emptyAccount, Cmd.none )
 
         NewAccountFormMessage formMsg ->
             updateNewAccountForm formMsg model
 
+        NewAccountRegistered content ->
+            ( model, Cmd.none )
 
-updateNewAccountForm : NewAccountFormMessage -> Model -> Model
+
+updateNewAccountForm : NewAccountFormMessage -> Model -> ( Model, Cmd Msg )
 updateNewAccountForm msg model =
     case ( msg, model ) of
         ( UsernameChanged newUsername, NewAccount currentAccount ) ->
-            NewAccount { currentAccount | username = newUsername }
+            ( NewAccount { currentAccount | username = newUsername }, Cmd.none )
 
         ( EmailChanged newEmail, NewAccount currentAccount ) ->
-            NewAccount { currentAccount | email = newEmail }
+            ( NewAccount { currentAccount | email = newEmail }, Cmd.none )
 
         ( PasswordChanged newPassword, NewAccount currentAccount ) ->
-            NewAccount { currentAccount | password = newPassword }
+            ( NewAccount { currentAccount | password = newPassword }, Cmd.none )
 
         ( NewAccountSubmitted, NewAccount currentAccount ) ->
-            Home currentAccount
+            ( Subscribing currentAccount
+            , Http.post
+                { url = "/new-user"
+                , body = Http.jsonBody (accountToJson currentAccount)
+                , expect = Http.expectString NewAccountRegistered
+                }
+            )
 
         _ ->
-            model
+            ( model, Cmd.none )
+
+
+
+-- SUBSCRIPTIONS --------------------------------------------------------------
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.none
 
 
 
@@ -86,11 +127,6 @@ updateNewAccountForm msg model =
 defaultAttributes : List (Element.Attribute msg)
 defaultAttributes =
     [ padding 5, spacing 5 ]
-
-
-initialScreen : Model
-initialScreen =
-    LogIn
 
 
 view model =
@@ -104,6 +140,9 @@ view model =
         NewAccount account ->
             newAccountView account
 
+        Subscribing account ->
+            subscribingView
+
 
 logInView =
     Element.layout defaultAttributes
@@ -111,6 +150,11 @@ logInView =
 
 
 homeView account =
+    Element.layout defaultAttributes
+        Element.none
+
+
+subscribingView =
     Element.layout defaultAttributes
         Element.none
 
