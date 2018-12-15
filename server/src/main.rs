@@ -60,7 +60,7 @@ fn main() {
     let register = warp::post2()
         .and(warp::path("new-user"))
         .and(warp::body::content_length_limit(1024 * 16))
-        .and(warp::body::json())
+        .and(warp::body::form())
         .map(move |argument: HashMap<String, String>| {
             let username = extract_or_empty!(argument, "username");
             let email = extract_or_empty!(argument, "email");

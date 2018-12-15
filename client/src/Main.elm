@@ -7,7 +7,6 @@ import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Http
-import Json.Encode
 
 
 main =
@@ -35,12 +34,12 @@ emptyAccount =
     { username = "", email = "", password = "" }
 
 
-accountToJson : Account -> Json.Encode.Value
-accountToJson account =
-    Json.Encode.object
-        [ ( "username", Json.Encode.string account.username )
-        , ( "email", Json.Encode.string account.email )
-        , ( "password", Json.Encode.string account.password )
+accountToUrlEncoded : Account -> String
+accountToUrlEncoded account =
+    String.join "&"
+        [ "username=" ++ account.username
+        , "email=" ++ account.email
+        , "password=" ++ account.password
         ]
 
 
@@ -102,7 +101,10 @@ updateNewAccountForm msg model =
             ( Subscribing currentAccount
             , Http.post
                 { url = "/new-user"
-                , body = Http.jsonBody (accountToJson currentAccount)
+                , body =
+                    Http.stringBody
+                        "application/x-www-form-urlencoded"
+                        (accountToUrlEncoded currentAccount)
                 , expect = Http.expectString NewAccountRegistered
                 }
             )
