@@ -1,4 +1,13 @@
 table! {
+    auth_imap_account (id) {
+        id -> Int4,
+        owner -> Int4,
+        server -> Varchar,
+        username -> Varchar,
+    }
+}
+
+table! {
     auth_user (id) {
         id -> Int4,
         username -> Varchar,
@@ -8,3 +17,10 @@ table! {
         activation_key -> Nullable<Bytea>,
     }
 }
+
+joinable!(auth_imap_account -> auth_user (owner));
+
+allow_tables_to_appear_in_same_query!(
+    auth_imap_account,
+    auth_user,
+);

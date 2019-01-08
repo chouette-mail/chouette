@@ -5,11 +5,12 @@ use rand::rngs::OsRng;
 use bcrypt::{DEFAULT_COST, hash, verify};
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
-use crate::schema::auth_user;
+use crate::schema::{auth_user, auth_imap_account};
 use crate::config::DatabaseError;
 
 /// A user of chouette.
-#[derive(Debug, Queryable)]
+#[derive(Identifiable, Queryable, PartialEq, Debug)]
+#[table_name = "auth_user"]
 pub struct User {
     /// The id of the user.
     pub id: i32,
@@ -72,6 +73,15 @@ impl User {
         })
 
     }
+
+    /// Adds a new imap server for the user.
+    pub fn new_imap_account(&self, server: &str, username: &str) -> Result<NewImapAccount, ()> {
+        Ok(NewImapAccount {
+            owner: self.id,
+            server: String::from(server),
+            username: String::from(username),
+        })
+    }
 }
 
 impl NewUser {
@@ -82,4 +92,36 @@ impl NewUser {
             .get_result(&database)?)
 
     }
+}
+
+/// An imap account that is owned by a user.
+#[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
+#[belongs_to(User, foreign_key = "owner")]
+#[table_name = "auth_imap_account"]
+pub struct ImapAccount {
+    /// The id of the imap account.
+    pub id: i32,
+
+    /// The owner of the imap account.
+    pub owner: i32,
+
+    /// The imap server address.
+    pub server: String,
+
+    /// The username to log to the imap server.
+    pub username: String,
+}
+
+/// A new imap account not stored into the database yet.
+#[derive(Debug, Insertable)]
+#[table_name = "auth_imap_account"]
+pub struct NewImapAccount {
+    /// The owner of the imap account.
+    pub owner: i32,
+
+    /// The imap server address.
+    pub server: String,
+
+    /// The username to log to the imap server.
+    pub username: String,
 }
