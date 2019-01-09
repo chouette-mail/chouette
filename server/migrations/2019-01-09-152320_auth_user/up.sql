@@ -5,4 +5,11 @@ CREATE TABLE auth_user (
     hashed_password VARCHAR NOT NULL,
     activated BOOLEAN NOT NULL,
     activation_key BYTEA
-)
+);
+
+CREATE TABLE auth_imap_account (
+    id SERIAL PRIMARY KEY,
+    owner INT NOT NULL REFERENCES auth_user(id),
+    server VARCHAR NOT NULL,
+    username VARCHAR NOT NULL
+);
