@@ -1,4 +1,4 @@
-CREATE TABLE auth_user (
+CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR NOT NULL UNIQUE,
     email VARCHAR NOT NULL UNIQUE,
@@ -7,15 +7,15 @@ CREATE TABLE auth_user (
     activation_key BYTEA
 );
 
-CREATE TABLE auth_session (
+CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,
     cookie VARCHAR NOT NULL,
-    owner INT NOT NULL REFERENCES auth_user (id)
+    user_id INT NOT NULL REFERENCES users (id)
 );
 
-CREATE TABLE auth_imap_account (
+CREATE TABLE imap_accounts (
     id SERIAL PRIMARY KEY,
-    owner INT NOT NULL REFERENCES auth_user (id),
+    user_id INT NOT NULL REFERENCES users (id),
     server VARCHAR NOT NULL,
     username VARCHAR NOT NULL
 );

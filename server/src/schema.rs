@@ -1,22 +1,22 @@
 table! {
-    auth_imap_account (id) {
+    imap_accounts (id) {
         id -> Int4,
-        owner -> Int4,
+        user_id -> Int4,
         server -> Varchar,
         username -> Varchar,
     }
 }
 
 table! {
-    auth_session (id) {
+    sessions (id) {
         id -> Int4,
         cookie -> Varchar,
-        owner -> Int4,
+        user_id -> Int4,
     }
 }
 
 table! {
-    auth_user (id) {
+    users (id) {
         id -> Int4,
         username -> Varchar,
         email -> Varchar,
@@ -26,11 +26,11 @@ table! {
     }
 }
 
-joinable!(auth_imap_account -> auth_user (owner));
-joinable!(auth_session -> auth_user (owner));
+joinable!(imap_accounts -> users (user_id));
+joinable!(sessions -> users (user_id));
 
 allow_tables_to_appear_in_same_query!(
-    auth_imap_account,
-    auth_session,
-    auth_user,
+    imap_accounts,
+    sessions,
+    users,
 );

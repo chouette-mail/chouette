@@ -5,12 +5,11 @@ use rand::rngs::OsRng;
 use bcrypt::{DEFAULT_COST, hash, verify};
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
-use crate::schema::{auth_user, auth_imap_account};
+use crate::schema::{users, imap_accounts};
 use crate::config::DatabaseError;
 
 /// A user of chouette.
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
-#[table_name = "auth_user"]
 pub struct User {
     /// The id of the user.
     pub id: i32,
@@ -32,7 +31,7 @@ pub struct User {
 }
 
 #[derive(Debug, Insertable)]
-#[table_name="auth_user"]
+#[table_name = "users"]
 /// A user that is stored into the database yet.
 pub struct NewUser {
     /// The username of the user.
@@ -77,7 +76,7 @@ impl User {
     /// Adds a new imap server for the user.
     pub fn new_imap_account(&self, server: &str, username: &str) -> Result<NewImapAccount, ()> {
         Ok(NewImapAccount {
-            owner: self.id,
+            user_id: self.id,
             server: String::from(server),
             username: String::from(username),
         })
@@ -87,7 +86,7 @@ impl User {
 impl NewUser {
     /// Saves the new user into the database.
     pub fn save(&self, database: PgConnection) -> Result<User, DatabaseError> {
-        Ok(diesel::insert_into(auth_user::table)
+        Ok(diesel::insert_into(users::table)
             .values(self)
             .get_result(&database)?)
 
@@ -96,14 +95,13 @@ impl NewUser {
 
 /// An imap account that is owned by a user.
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
-#[belongs_to(User, foreign_key = "owner")]
-#[table_name = "auth_imap_account"]
+#[belongs_to(User)]
 pub struct ImapAccount {
     /// The id of the imap account.
     pub id: i32,
 
     /// The owner of the imap account.
-    pub owner: i32,
+    pub user_id: i32,
 
     /// The imap server address.
     pub server: String,
@@ -114,10 +112,10 @@ pub struct ImapAccount {
 
 /// A new imap account not stored into the database yet.
 #[derive(Debug, Insertable)]
-#[table_name = "auth_imap_account"]
+#[table_name = "imap_accounts"]
 pub struct NewImapAccount {
     /// The owner of the imap account.
-    pub owner: i32,
+    pub user_id: i32,
 
     /// The imap server address.
     pub server: String,
