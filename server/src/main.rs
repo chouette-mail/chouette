@@ -34,10 +34,10 @@ macro_rules! connect {
 
 fn main() {
 
-    let matches = App::new("3D Model Converter")
+    let matches = App::new("Chouette Mail")
         .version("0.1.0")
         .author("Thomas Forgione <thomas@forgione.fr>")
-        .about("Converts 3D models")
+        .about("A cool webmail written in Rust and Elm")
         .arg(Arg::with_name("verbose")
              .short("v")
              .long("verbose")
@@ -47,7 +47,7 @@ fn main() {
         .get_matches();
 
     stderrlog::new()
-        .modules(vec![module_path!(), "model_converter"])
+        .modules(vec![module_path!(), "chouette"])
         .verbosity(1 + matches.occurrences_of("verbose") as usize)
         .init()
         .expect("Couldn't initialize logger");
