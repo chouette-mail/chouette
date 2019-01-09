@@ -10,8 +10,8 @@ table! {
 table! {
     sessions (id) {
         id -> Int4,
-        cookie -> Varchar,
         user_id -> Int4,
+        secret -> Varchar,
     }
 }
 

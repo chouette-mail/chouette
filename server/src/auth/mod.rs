@@ -7,7 +7,7 @@ use bcrypt::{DEFAULT_COST, hash, verify};
 use diesel::prelude::*;
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
-use crate::schema::{users, imap_accounts};
+use crate::schema::{users, imap_accounts, sessions};
 use crate::config::DatabaseError;
 
 /// A user of chouette.
@@ -32,9 +32,9 @@ pub struct User {
     pub activation_key: Option<String>,
 }
 
+/// A user that is stored into the database yet.
 #[derive(Debug, Insertable)]
 #[table_name = "users"]
-/// A user that is stored into the database yet.
 pub struct NewUser {
     /// The username of the user.
     pub username: String,
@@ -105,13 +105,32 @@ impl User {
         }
     }
 
+    /// Creates or updates a session for a user that has been authenticated.
+    pub fn save_session(&self, db: &PgConnection) -> Result<Session, DatabaseError> {
+        // Generate the secret
+        let mut rng = OsRng::new().unwrap();
+        let secret = rng
+            .sample_iter(&Alphanumeric)
+            .take(40)
+            .collect::<String>();
+
+        let session = NewSession {
+            user_id: self.id,
+            secret,
+        };
+
+        Ok(diesel::insert_into(sessions::table)
+            .values(&session)
+            .get_result(db)?)
+    }
+
     /// Adds a new imap server for the user.
-    pub fn new_imap_account(&self, server: &str, username: &str) -> Result<NewImapAccount, ()> {
-        Ok(NewImapAccount {
+    pub fn new_imap_account(&self, server: &str, username: &str) -> NewImapAccount {
+        NewImapAccount {
             user_id: self.id,
             server: String::from(server),
             username: String::from(username),
-        })
+        }
     }
 }
 
@@ -154,4 +173,38 @@ pub struct NewImapAccount {
 
     /// The username to log to the imap server.
     pub username: String,
+}
+
+impl NewImapAccount {
+    /// Saves a new imap account into the database and returns the corresponding imap account.
+    pub fn save(&self, db: &PgConnection) -> Result<ImapAccount, DatabaseError> {
+        Ok(diesel::insert_into(imap_accounts::table)
+            .values(self)
+            .get_result(db)?)
+    }
+}
+
+/// A session that belongs to a user.
+#[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
+#[belongs_to(User)]
+pub struct Session {
+    /// The id of the session.
+    pub id: i32,
+
+    /// The owned of the session.
+    pub user_id: i32,
+
+    /// The secret id of the session.
+    pub secret: String,
+}
+
+/// A new session not stored in the database yet.
+#[derive(Debug, Insertable)]
+#[table_name = "sessions"]
+pub struct NewSession {
+    /// The owner of the session.
+    pub user_id: i32,
+
+    /// The secret id of the session.
+    pub secret: String,
 }

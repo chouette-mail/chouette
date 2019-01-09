@@ -114,11 +114,27 @@ fn main() {
 
             let connection = connect!(config_clone);
 
-            if User::authenticate(username, password, &connection).is_some() {
-                info!("User {} authenticated", username);
-            } else {
-                info!("User {} sent wrong password", username);
-            }
+            let user = match User::authenticate(username, password, &connection) {
+                Some(user) => {
+                    info!("User {} authenticated", username);
+                    user
+                },
+                None => {
+                    info!("User {} sent wrong password", username);
+                    return warp::reply();
+                },
+            };
+
+            let session = match user.save_session(&connection) {
+                Ok(session) => {
+                    info!("Session saved for user {}", username);
+                    session
+                },
+                Err(e) => {
+                    error!("Failed to save session for user {}: {:?}", username, e);
+                    return warp::reply();
+                },
+            };
 
             warp::reply()
         });

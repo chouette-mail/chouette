@@ -9,8 +9,8 @@ CREATE TABLE users (
 
 CREATE TABLE sessions (
     id SERIAL PRIMARY KEY,
-    cookie VARCHAR NOT NULL,
-    user_id INT NOT NULL REFERENCES users (id)
+    user_id INT NOT NULL REFERENCES users (id),
+    secret VARCHAR NOT NULL
 );
 
 CREATE TABLE imap_accounts (
