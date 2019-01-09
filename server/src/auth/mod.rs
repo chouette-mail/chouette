@@ -3,6 +3,7 @@
 use rand::RngCore;
 use rand::rngs::OsRng;
 use bcrypt::{DEFAULT_COST, hash, verify};
+use diesel::prelude::*;
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
 use crate::schema::{users, imap_accounts};
@@ -73,6 +74,34 @@ impl User {
 
     }
 
+    /// Authenticates a user from its username and password.
+    pub fn authenticate(auth_username: &str, auth_password: &str, db: &PgConnection) -> Option<User> {
+        use crate::schema::users::dsl::*;
+
+        let user = users
+            .filter(username.eq(auth_username))
+            // .filter(activated.eq(true))
+            .select((id, username, email, hashed_password, activated, activation_key))
+            .first::<User>(db);
+
+        let user = match user {
+            Ok(user) => user,
+            Err(e) => {
+                error!("Failed to execute request from db: {:?}", e);
+                return None;
+            },
+        };
+
+        match bcrypt::verify(&auth_password, &user.hashed_password) {
+            Ok(true) => Some(user),
+            Ok(false) => None,
+            Err(e) => {
+                error!("Failed to check password for user {:?}: {:?}", user, e);
+                None
+            }
+        }
+    }
+
     /// Adds a new imap server for the user.
     pub fn new_imap_account(&self, server: &str, username: &str) -> Result<NewImapAccount, ()> {
         Ok(NewImapAccount {
@@ -85,10 +114,10 @@ impl User {
 
 impl NewUser {
     /// Saves the new user into the database.
-    pub fn save(&self, database: PgConnection) -> Result<User, DatabaseError> {
+    pub fn save(&self, database: &PgConnection) -> Result<User, DatabaseError> {
         Ok(diesel::insert_into(users::table)
             .values(self)
-            .get_result(&database)?)
+            .get_result(database)?)
 
     }
 }

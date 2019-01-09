@@ -13,7 +13,19 @@ macro_rules! extract_or_empty {
         match $map.get($param) {
             Some(o) => o,
             None => {
-                error!("Trying to get {}", $param);
+                error!("Missing parameter {} in request", $param);
+                return warp::reply();
+            },
+        }
+    }
+}
+
+macro_rules! connect {
+    ($config: expr) => {
+        match $config.database.connect() {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Couldn't connect to the database: {:?}", e);
                 return warp::reply();
             },
         }
@@ -57,9 +69,9 @@ fn main() {
         .and(warp::path::end())
         .and(warp::fs::file("./dist/main.js"));
 
+    let config_clone = config.clone();
     let register = warp::post2()
         .and(warp::path("new-user"))
-        .and(warp::body::content_length_limit(1024 * 16))
         .and(warp::body::form())
         .map(move |argument: HashMap<String, String>| {
             let username = extract_or_empty!(argument, "username");
@@ -74,15 +86,9 @@ fn main() {
                 },
             };
 
-            let connection = match config.database.connect() {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Couldn't connect to the database: {:?}", e);
-                    return warp::reply();
-                },
-            };
+            let connection = connect!(config_clone);
 
-            match user.save(connection) {
+            match user.save(&connection) {
                 Ok(_) => (),
                 Err(e) => {
                     error!("Failed to save user to the database: {:?}", e);
@@ -94,9 +100,29 @@ fn main() {
             warp::reply()
         });
 
+    let config_clone = config.clone();
+    let login = warp::post2()
+        .and(warp::path("login"))
+        .and(warp::body::form())
+        .map(move |argument: HashMap<String, String>| {
+
+            let username = extract_or_empty!(argument, "username");
+            let password = extract_or_empty!(argument, "password");
+
+            let connection = connect!(config_clone);
+
+            if let Some(user) = User::authenticate(username, password, &connection) {
+                info!("User {} authenticated", username);
+            } else {
+                info!("User {} sent wrong password", username);
+            }
+
+            warp::reply()
+        });
+
     info!("Done!");
 
     info!("Starting server");
-    warp::serve(index.or(js).or(register))
+    warp::serve(index.or(js).or(register).or(login))
         .run(([127, 0, 0, 1], 8000));
 }
