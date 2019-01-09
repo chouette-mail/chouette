@@ -7,9 +7,15 @@ CREATE TABLE auth_user (
     activation_key BYTEA
 );
 
+CREATE TABLE auth_session (
+    id SERIAL PRIMARY KEY,
+    cookie VARCHAR NOT NULL,
+    owner INT NOT NULL REFERENCES auth_user (id)
+);
+
 CREATE TABLE auth_imap_account (
     id SERIAL PRIMARY KEY,
-    owner INT NOT NULL REFERENCES auth_user(id),
+    owner INT NOT NULL REFERENCES auth_user (id),
     server VARCHAR NOT NULL,
     username VARCHAR NOT NULL
 );
