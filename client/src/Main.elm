@@ -100,7 +100,7 @@ updateNewAccountForm msg model =
         ( NewAccountSubmitted, NewAccount currentAccount ) ->
             ( Subscribing currentAccount
             , Http.post
-                { url = "/new-user"
+                { url = "/api/new-user"
                 , body =
                     Http.stringBody
                         "application/x-www-form-urlencoded"

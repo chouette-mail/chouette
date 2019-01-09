@@ -72,6 +72,7 @@ fn main() {
 
     let config_clone = config.clone();
     let register = warp::post2()
+        .and(warp::path("api"))
         .and(warp::path("new-user"))
         .and(warp::body::form())
         .map(move |argument: HashMap<String, String>| {
@@ -103,6 +104,7 @@ fn main() {
 
     let config_clone = config.clone();
     let login = warp::post2()
+        .and(warp::path("api"))
         .and(warp::path("login"))
         .and(warp::body::form())
         .map(move |argument: HashMap<String, String>| {
