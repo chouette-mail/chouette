@@ -1,7 +1,8 @@
 //! This module contains everything related to the authentication of users.
 
-use rand::RngCore;
+use rand::Rng;
 use rand::rngs::OsRng;
+use rand::distributions::Alphanumeric;
 use bcrypt::{DEFAULT_COST, hash, verify};
 use diesel::prelude::*;
 use diesel::RunQueryDsl;
@@ -28,7 +29,7 @@ pub struct User {
     pub activated: bool,
 
     /// The activation key of the user if it is not active.
-    pub activation_key: Option<Vec<u8>>,
+    pub activation_key: Option<String>,
 }
 
 #[derive(Debug, Insertable)]
@@ -48,7 +49,7 @@ pub struct NewUser {
     pub activated: bool,
 
     /// The activation key of the new user.
-    pub activation_key: Option<Vec<u8>>,
+    pub activation_key: Option<String>,
 }
 
 impl User {
@@ -61,8 +62,10 @@ impl User {
 
         // Generate the activation key
         let mut rng = OsRng::new().unwrap();
-        let mut activation_key = vec![0u8; 20];
-        rng.fill_bytes(&mut activation_key);
+        let activation_key = rng
+            .sample_iter(&Alphanumeric)
+            .take(40)
+            .collect::<String>();
 
         Ok(NewUser {
             username: String::from(username),

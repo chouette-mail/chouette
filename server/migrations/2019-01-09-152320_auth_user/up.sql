@@ -4,7 +4,7 @@ CREATE TABLE users (
     email VARCHAR NOT NULL UNIQUE,
     hashed_password VARCHAR NOT NULL,
     activated BOOLEAN NOT NULL,
-    activation_key BYTEA
+    activation_key VARCHAR
 );
 
 CREATE TABLE sessions (

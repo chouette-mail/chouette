@@ -22,7 +22,7 @@ table! {
         email -> Varchar,
         hashed_password -> Varchar,
         activated -> Bool,
-        activation_key -> Nullable<Bytea>,
+        activation_key -> Nullable<Varchar>,
     }
 }
 
