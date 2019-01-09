@@ -1,6 +1,7 @@
 #[macro_use]
 extern crate log;
 
+use std::net::{SocketAddrV4, Ipv4Addr};
 use std::collections::HashMap;
 use clap::{Arg, App};
 use warp::Filter;
@@ -111,7 +112,7 @@ fn main() {
 
             let connection = connect!(config_clone);
 
-            if let Some(user) = User::authenticate(username, password, &connection) {
+            if User::authenticate(username, password, &connection).is_some() {
                 info!("User {} authenticated", username);
             } else {
                 info!("User {} sent wrong password", username);
@@ -122,7 +123,9 @@ fn main() {
 
     info!("Done!");
 
-    info!("Starting server");
+    let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8000);
+
+    info!("Server running on {}", socket.to_string());
     warp::serve(index.or(js).or(register).or(login))
-        .run(([127, 0, 0, 1], 8000));
+        .run(socket);
 }
