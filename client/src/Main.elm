@@ -1,13 +1,13 @@
 module Main exposing (main)
 
 import Browser
-import Element exposing (Element, alignRight, alignTop, centerX, centerY, el, fill, padding, rgb255, row, spacing, text, width)
+import Element exposing (Element, alignRight, alignTop, centerX, centerY, column, el, fill, fillPortion, height, link, padding, paragraph, rgb255, row, spacing, text, width, paddingXY)
 import Element.Background as Background
 import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import Http
-
+import Styles exposing (colors)
 
 main =
     Browser.element
@@ -128,7 +128,10 @@ subscriptions model =
 
 defaultAttributes : List (Element.Attribute msg)
 defaultAttributes =
-    [ padding 5, spacing 5 ]
+    [ Background.color colors.background
+    , Font.family [ Font.typeface "Roboto Condensed", Font.sansSerif ]
+    , Font.size 18
+    , Font.color colors.text ]
 
 
 view model =
@@ -163,46 +166,121 @@ subscribingView =
 
 newAccountView account =
     Element.layout defaultAttributes
-        (Element.column (centerX :: defaultAttributes)
-            [ Input.text defaultAttributes
-                { onChange = NewAccountFormMessage << UsernameChanged
-                , label = Input.labelAbove (centerY :: defaultAttributes) (text "Username")
-                , placeholder = Nothing
-                , text = account.username
-                }
-            , Input.email defaultAttributes
-                { onChange = NewAccountFormMessage << EmailChanged
-                , label = Input.labelAbove (centerY :: defaultAttributes) (text "Email address")
-                , placeholder = Nothing
-                , text = account.email
-                }
-            , Input.newPassword defaultAttributes
-                { onChange = NewAccountFormMessage << PasswordChanged
-                , label = Input.labelAbove (centerY :: defaultAttributes) (text "Password")
-                , placeholder = Nothing
-                , text = account.password
-                , show = False
-                }
-            , Input.button
-                (Border.rounded 5 :: Border.width 1 :: centerX :: defaultAttributes)
-                { onPress = Just (NewAccountFormMessage NewAccountSubmitted)
-                , label = text "New account"
-                }
-            ]
-        )
+        (loggedInPage account newAccountForm)
 
 
 addAccount : Element Msg
 addAccount =
-    Input.button
-        (Border.rounded 5 :: Border.width 1 :: defaultAttributes)
-        { onPress = Just NewAccountClicked
-        , label = text "New account"
-        }
+    normalButton (Just NewAccountClicked) "New account"
 
+
+title : String -> Element Msg
+title titleText =
+    row [ padding 30, centerX, Font.size 32, Font.color colors.accentLight ]
+        [ text titleText ]
 
 myRowOfStuff : Element Msg
 myRowOfStuff =
-    row [ width fill, alignTop, spacing 30 ]
-        [ el (alignRight :: defaultAttributes) addAccount
+    row [ width fill ] [
+            column [ width <| fillPortion 33] []
+            , column [ width <| fillPortion 33, centerX, alignTop ]
+                [ title "Welcome to chouette!"
+                , paragraph [ Font.center ]
+                      [ text "Chouette is a small and reliable open source web mail client written in Rust and Elm."
+                      , text """It gives you all the keys you need to get started almost instantly, and remain the only
+                                person accessing and storing your emails."""
+                      ]
+                , row [ width fill, paddingXY 0 30 ]
+                    [ el [ width <| fillPortion 50 ] (actionBarButton (Just NewAccountClicked) "New account")
+                    , el [ width <| fillPortion 50 ] (actionBarButton (Just NewAccountClicked) "Log in")
+                    ]
+                ]
+            , column [ width <| fillPortion 33] []
+            ]
+
+header : Element Msg
+header =
+    row [ width fill
+        , alignTop
+        , padding 20
+        , Font.color colors.contrastedText
+        , Background.gradient { angle = pi / 2, steps = [colors.accentLight, colors.accent] }
         ]
+        [ column [ width <| fillPortion 3 ]
+            [ text "Logo" ]
+        , column [ width <| fillPortion 5 ]
+            [ text "Search bar" ]
+        , column [ width <| fillPortion 5 ]
+            [ text "Status bar" ]
+        ]
+
+leftMenu : Element Msg
+leftMenu =
+    column [ width <| fillPortion 25, alignTop ]
+        [ menuItem "/" "Test"
+        ]
+
+menuItem : String -> String -> Element Msg
+menuItem url linkText =
+    let label = row [ width fill
+                    , padding 20
+                    , Background.color colors.accent
+                    , Font.color colors.contrastedText ] [ text linkText ]
+    in link [ width fill, height fill ] { url = url, label = label }
+
+loggedInPage : Account -> (Account -> Element Msg) -> Element Msg
+loggedInPage account subPage =
+    column [ width fill, height fill ]
+        [ header
+        , row [ width fill, height fill] [ leftMenu
+                            , column [ width <| fillPortion 75 ] [ subPage account ]
+                            ]
+        ]
+
+normalButton : Maybe Msg -> String -> Element Msg
+normalButton onPress buttonText =
+    Input.button [ Border.rounded 5
+                 , padding 10
+                 , Background.color colors.buttonNormal
+                 , Font.color colors.contrastedText
+                 , Font.size 12 ]
+                 { onPress = onPress
+                 , label = text buttonText }
+
+actionBarButton : Maybe Msg -> String -> Element Msg
+actionBarButton onPress buttonText =
+    Input.button [ padding 10
+                 , Font.center
+                 , width fill
+                 , height fill
+                 , Background.color colors.buttonNormal
+                 , Font.color colors.contrastedText
+                 , Border.color colors.contrastedText
+                 , Border.widthEach { left = 0, top = 0, right = 1, bottom = 0 }
+                 ]
+                 { onPress = onPress
+                 , label = text (String.toUpper buttonText) }
+
+newAccountForm account =
+    (Element.column [ centerY, centerX ]
+                [ Input.text defaultAttributes
+                    { onChange = NewAccountFormMessage << UsernameChanged
+                    , label = Input.labelAbove (centerY :: defaultAttributes) (text "Username")
+                    , placeholder = Nothing
+                    , text = account.username
+                    }
+                , Input.email defaultAttributes
+                    { onChange = NewAccountFormMessage << EmailChanged
+                    , label = Input.labelAbove (centerY :: defaultAttributes) (text "Email address")
+                    , placeholder = Nothing
+                    , text = account.email
+                    }
+                , Input.newPassword defaultAttributes
+                    { onChange = NewAccountFormMessage << PasswordChanged
+                    , label = Input.labelAbove (centerY :: defaultAttributes) (text "Password")
+                    , placeholder = Nothing
+                    , text = account.password
+                    , show = False
+                    }
+                , normalButton (Just (NewAccountFormMessage NewAccountSubmitted)) "New account"
+            ])
