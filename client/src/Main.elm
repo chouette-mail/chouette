@@ -378,7 +378,7 @@ header =
 leftMenu : Element Msg
 leftMenu =
     column [ width <| fillPortion 25, alignTop ]
-        [ menuItem (Just AddImapAccountClicked) "Test"
+        [ menuItem (Just AddImapAccountClicked) "Add new IMAP account"
         ]
 
 
