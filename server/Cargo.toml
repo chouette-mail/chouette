@@ -5,7 +5,7 @@ authors = ["Thomas Forgione <thomas@forgione.fr>"]
 edition = "2018"
 
 [dependencies]
-warp = "0.1.9"
+warp = "0.1.11"
 serde = "1.0.0"
 serde_derive = "1.0.0"
 toml = "0.4"

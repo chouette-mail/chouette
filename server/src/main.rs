@@ -4,6 +4,8 @@ extern crate log;
 use std::net::{SocketAddrV4, Ipv4Addr};
 use std::collections::HashMap;
 use clap::{Arg, App};
+use warp::http::header;
+use warp::http::response::Response;
 use warp::Filter;
 
 use chouette::config::ServerConfig;
@@ -15,7 +17,7 @@ macro_rules! extract_or_empty {
             Some(o) => o,
             None => {
                 error!("Missing parameter {} in request", $param);
-                return warp::reply();
+                return Response::new("");
             },
         }
     }
@@ -27,7 +29,7 @@ macro_rules! connect {
             Ok(c) => c,
             Err(e) => {
                 error!("Couldn't connect to the database: {:?}", e);
-                return warp::reply();
+                return Response::new("");
             },
         }
     }
@@ -84,7 +86,7 @@ fn main() {
                 Ok(r) => r,
                 Err(e) => {
                     error!("Failed to create user: {:?}", e);
-                    return warp::reply()
+                    return Response::new("")
                 },
             };
 
@@ -94,12 +96,12 @@ fn main() {
                 Ok(_) => (),
                 Err(e) => {
                     error!("Failed to save user to the database: {:?}", e);
-                    return warp::reply();
+                    return Response::new("");
                 },
             }
 
             info!("Saved {:?}", user);
-            warp::reply()
+            Response::new("")
         });
 
     let config_clone = config.clone();
@@ -121,7 +123,7 @@ fn main() {
                 },
                 None => {
                     info!("User {} sent wrong password", username);
-                    return warp::reply();
+                    return Response::new("");
                 },
             };
 
@@ -132,11 +134,15 @@ fn main() {
                 },
                 Err(e) => {
                     error!("Failed to save session for user {}: {:?}", username, e);
-                    return warp::reply();
+                    return Response::new("");
                 },
             };
 
-            warp::reply()
+            Response::builder()
+                .header(header::SET_COOKIE, format!("EXAUTH={}; SameSite=Strict; HttpOpnly", session.secret))
+                .body("")
+                .ok()
+                .unwrap()
         });
 
     info!("Done!");
