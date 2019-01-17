@@ -30,6 +30,13 @@ type alias Account =
     }
 
 
+type alias ImapAccount =
+    { imapServer : String
+    , username : String
+    , password : String
+    }
+
+
 type alias LogInFormContent =
     { username : String
     , password : String
@@ -44,6 +51,11 @@ emptyAccount =
 emptyLogInFormContent : LogInFormContent
 emptyLogInFormContent =
     { username = "", password = "" }
+
+
+emptyImapAccount : ImapAccount
+emptyImapAccount =
+    { username = "", imapServer = "", password = "" }
 
 
 accountToUrlEncoded : Account -> String
@@ -61,6 +73,22 @@ logInFormContentToUrlEncoded account =
         [ "username=" ++ account.username
         , "password=" ++ account.password
         ]
+
+
+addImapServerFormContentToUrlEncoded : ImapAccount -> String
+addImapServerFormContentToUrlEncoded account =
+    String.join "&"
+        [ "username=" ++ account.username
+        , "password=" ++ account.password
+        , "server=" ++ account.imapServer
+        ]
+
+
+type AddImapAccountFormMessage
+    = AddImapAccountServerChanged String
+    | AddImapAccountPasswordChanged String
+    | AddImapAccountUsernameChanged String
+    | AddImapAccountSubmitted
 
 
 type LogInFormMessage
@@ -83,6 +111,9 @@ type Msg
     | NewAccountRegistered (Result Http.Error String)
     | LogInFormMessage LogInFormMessage
     | LogInValidated (Result Http.Error String)
+    | AddImapAccountClicked
+    | AddImapAccountFormMessage AddImapAccountFormMessage
+    | AddImapAccountValidated (Result Http.Error String)
 
 
 type Model
@@ -90,8 +121,10 @@ type Model
     | LogIn LogInFormContent
     | Subscribing Account
     | LoggingIn LogInFormContent
-    | Home Account
+    | Home
     | NewAccount Account
+    | AddImapAccount ImapAccount
+    | AddingImapAccount ImapAccount
 
 
 init : () -> ( Model, Cmd Msg )
@@ -122,7 +155,16 @@ update msg model =
             updateLogInForm formMsg model
 
         LogInValidated content ->
-            ( Portal, Cmd.none )
+            ( Home, Cmd.none )
+
+        AddImapAccountClicked ->
+            ( AddImapAccount emptyImapAccount, Cmd.none )
+
+        AddImapAccountFormMessage formMsg ->
+            updateImapAccountFormMessage formMsg model
+
+        AddImapAccountValidated account ->
+            ( Home, Cmd.none )
 
 
 updateNewAccountForm : NewAccountFormMessage -> Model -> ( Model, Cmd Msg )
@@ -175,7 +217,35 @@ updateLogInForm msg model =
             )
 
         _ ->
-            ( Portal, Cmd.none )
+            ( model, Cmd.none )
+
+
+updateImapAccountFormMessage : AddImapAccountFormMessage -> Model -> ( Model, Cmd Msg )
+updateImapAccountFormMessage msg model =
+    case ( msg, model ) of
+        ( AddImapAccountServerChanged newImapServer, AddImapAccount account ) ->
+            ( AddImapAccount { account | imapServer = newImapServer }, Cmd.none )
+
+        ( AddImapAccountUsernameChanged newUsername, AddImapAccount account ) ->
+            ( AddImapAccount { account | username = newUsername }, Cmd.none )
+
+        ( AddImapAccountPasswordChanged newPassword, AddImapAccount account ) ->
+            ( AddImapAccount { account | password = newPassword }, Cmd.none )
+
+        ( AddImapAccountSubmitted, AddImapAccount account ) ->
+            ( AddingImapAccount account
+            , Http.post
+                { url = "/api/new-imap-account"
+                , body =
+                    Http.stringBody
+                        "application/x-www-form-urlencoded"
+                        (addImapServerFormContentToUrlEncoded account)
+                , expect = Http.expectString AddImapAccountValidated
+                }
+            )
+
+        _ ->
+            ( model, Cmd.none )
 
 
 
@@ -208,8 +278,8 @@ view model =
         LogIn content ->
             logInView content
 
-        Home account ->
-            homeView account
+        Home ->
+            homeView
 
         NewAccount account ->
             newAccountView account
@@ -220,15 +290,20 @@ view model =
         LoggingIn account ->
             subscribingView
 
+        AddImapAccount account ->
+            imapAccountView account
+
+        AddingImapAccount account ->
+            subscribingView
+
 
 portalView =
     Element.layout defaultAttributes
         myRowOfStuff
 
 
-homeView account =
-    Element.layout defaultAttributes
-        Element.none
+homeView =
+    newAccountView emptyAccount
 
 
 subscribingView =
@@ -244,6 +319,11 @@ newAccountView account =
 logInView content =
     Element.layout defaultAttributes
         (logInForm content)
+
+
+imapAccountView content =
+    Element.layout defaultAttributes
+        (imapAccountForm content)
 
 
 addAccount : Element Msg
@@ -298,12 +378,12 @@ header =
 leftMenu : Element Msg
 leftMenu =
     column [ width <| fillPortion 25, alignTop ]
-        [ menuItem "/" "Test"
+        [ menuItem (Just AddImapAccountClicked) "Test"
         ]
 
 
-menuItem : String -> String -> Element Msg
-menuItem url linkText =
+menuItem : Maybe Msg -> String -> Element Msg
+menuItem message linkText =
     let
         label =
             row
@@ -314,7 +394,10 @@ menuItem url linkText =
                 ]
                 [ text linkText ]
     in
-    link [ width fill, height fill ] { url = url, label = label }
+    Input.button [ width fill, height fill ]
+        { onPress = message
+        , label = label
+        }
 
 
 loggedInPage : Account -> (Account -> Element Msg) -> Element Msg
@@ -400,4 +483,29 @@ logInForm account =
             , show = False
             }
         , normalButton (Just (LogInFormMessage LogInSubmitted)) "Log in"
+        ]
+
+
+imapAccountForm account =
+    Element.column [ centerY, centerX ]
+        [ Input.text defaultAttributes
+            { onChange = AddImapAccountFormMessage << AddImapAccountServerChanged
+            , label = Input.labelAbove (centerY :: defaultAttributes) (text "Url of the IMAP server")
+            , placeholder = Nothing
+            , text = account.imapServer
+            }
+        , Input.text defaultAttributes
+            { onChange = AddImapAccountFormMessage << AddImapAccountUsernameChanged
+            , label = Input.labelAbove (centerY :: defaultAttributes) (text "Username")
+            , placeholder = Nothing
+            , text = account.username
+            }
+        , Input.newPassword defaultAttributes
+            { onChange = AddImapAccountFormMessage << AddImapAccountPasswordChanged
+            , label = Input.labelAbove (centerY :: defaultAttributes) (text "Password")
+            , placeholder = Nothing
+            , text = account.password
+            , show = False
+            }
+        , normalButton (Just (AddImapAccountFormMessage AddImapAccountSubmitted)) "Add IMAP account"
         ]

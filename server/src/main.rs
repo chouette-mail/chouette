@@ -190,7 +190,7 @@ fn main() {
 
             info!("New imap account requested");
 
-            let imap_server = extract_or_empty!(arguments, "imap");
+            let imap_server = extract_or_empty!(arguments, "server");
             let username = extract_or_empty!(arguments, "username");
             let password = extract_or_empty!(arguments, "password");
 
