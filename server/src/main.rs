@@ -49,9 +49,14 @@ fn main() {
              .multiple(true))
         .get_matches();
 
+    #[cfg(debug_assertions)]
+    let verbosity = 10;
+    #[cfg(not(debug_assertions))]
+    let verbosity = matches.occurrences_of("verbose") as usize;
+
     stderrlog::new()
         .modules(vec![module_path!(), "chouette"])
-        .verbosity(1 + matches.occurrences_of("verbose") as usize)
+        .verbosity(verbosity)
         .init()
         .expect("Couldn't initialize logger");
 
@@ -147,7 +152,7 @@ fn main() {
 
     info!("Done!");
 
-    let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 8000);
+    let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
 
     info!("Server running on {}", socket.to_string());
     warp::serve(index.or(js).or(register).or(login))
