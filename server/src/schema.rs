@@ -4,6 +4,7 @@ table! {
         user_id -> Int4,
         server -> Varchar,
         username -> Varchar,
+        password -> Varchar,
     }
 }
 

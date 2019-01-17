@@ -17,5 +17,6 @@ CREATE TABLE imap_accounts (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users (id),
     server VARCHAR NOT NULL,
-    username VARCHAR NOT NULL
+    username VARCHAR NOT NULL,
+    password VARCHAR NOT NULL
 );

@@ -7,9 +7,11 @@ use clap::{Arg, App};
 use warp::http::header;
 use warp::http::response::Response;
 use warp::Filter;
+use warp::reject::Rejection;
+use warp::cookie::cookie;
 
 use chouette::config::ServerConfig;
-use chouette::auth::User;
+use chouette::auth::{User, Session, ImapAccount};
 
 macro_rules! extract_or_empty {
     ($map: expr, $param: expr) => {
@@ -83,6 +85,9 @@ fn main() {
         .and(warp::path("new-user"))
         .and(warp::body::form())
         .map(move |argument: HashMap<String, String>| {
+
+            info!("New user requested");
+
             let username = extract_or_empty!(argument, "username");
             let email = extract_or_empty!(argument, "email");
             let password = extract_or_empty!(argument, "password");
@@ -114,10 +119,12 @@ fn main() {
         .and(warp::path("api"))
         .and(warp::path("login"))
         .and(warp::body::form())
-        .map(move |argument: HashMap<String, String>| {
+        .map(move |arguments: HashMap<String, String>| {
 
-            let username = extract_or_empty!(argument, "username");
-            let password = extract_or_empty!(argument, "password");
+            info!("Login requested");
+
+            let username = extract_or_empty!(arguments, "username");
+            let password = extract_or_empty!(arguments, "password");
 
             let connection = connect!(config_clone);
 
@@ -150,11 +157,70 @@ fn main() {
                 .unwrap()
         });
 
+    let config_clone = config.clone();
+    let config_clone_bis = config.clone();
+    let new_imap_account = warp::post2()
+        .and(cookie("EXAUTH"))
+        .and_then(move |key: String| -> Result<Session, Rejection> {
+            let connection = match config_clone.database.connect() {
+                Ok(c) => c,
+                Err(e) => {
+                    error!("Couldn't connect to the database: {:?}", e);
+                    panic!()
+                },
+            };
+
+            let session = match Session::from_secret(&key, &connection) {
+                Some(s) => {
+                    info!("Found session for user {}", s.user_id);
+                    s
+                },
+                None => {
+                    info!("No session found");
+                    panic!()
+                },
+            };
+
+            Ok(session)
+        })
+        .and(warp::path("api"))
+        .and(warp::path("new-imap-account"))
+        .and(warp::body::form())
+        .map(move |session: Session, arguments: HashMap<String, String>| {
+
+            info!("New imap account requested");
+
+            let imap_server = extract_or_empty!(arguments, "imap");
+            let username = extract_or_empty!(arguments, "username");
+            let password = extract_or_empty!(arguments, "password");
+
+            let connection = connect!(config_clone_bis);
+
+            let imap_account = ImapAccount::new(session.user_id, imap_server, username, password);
+
+            match imap_account.save(&connection) {
+                Ok(_) => {
+                    info!("Imap account saved succesfully for user {}", session.user_id);
+                },
+                Err(e) => {
+                    error!("Couldn't connect save imap account to the database: {:?}", e);
+                    panic!()
+                },
+            }
+
+            Response::new("")
+        });
+
     info!("Done!");
 
     let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
 
+    let routes = index
+        .or(js)
+        .or(register)
+        .or(login)
+        .or(new_imap_account);
+
     info!("Server running on {}", socket.to_string());
-    warp::serve(index.or(js).or(register).or(login))
-        .run(socket);
+    warp::serve(routes).run(socket);
 }

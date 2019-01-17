@@ -125,12 +125,8 @@ impl User {
     }
 
     /// Adds a new imap server for the user.
-    pub fn new_imap_account(&self, server: &str, username: &str) -> NewImapAccount {
-        NewImapAccount {
-            user_id: self.id,
-            server: String::from(server),
-            username: String::from(username),
-        }
+    pub fn new_imap_account(&self, server: &str, username: &str, password: &str) -> NewImapAccount {
+        ImapAccount::new(self.id, server, username, password)
     }
 }
 
@@ -159,6 +155,27 @@ pub struct ImapAccount {
 
     /// The username to log to the imap server.
     pub username: String,
+
+    /// The password to log to the imap server.
+    ///
+    /// FIXME: For the moment, the password is stored in clear.
+
+    // A potential solution would be to encrypt the password with the user's real password, that
+    // way we would be able to retrieve the imap password but we wouldn't be abl to retrieve it
+    // without, so we could potentially be safe even if the db leaks.
+    pub password: String,
+}
+
+impl ImapAccount {
+    /// Creates a new imap account that is not stored in the db yet.
+    pub fn new(user_id: i32, server: &str, username: &str, password: &str) -> NewImapAccount {
+        NewImapAccount {
+            user_id,
+            server: String::from(server),
+            username: String::from(username),
+            password: String::from(password),
+        }
+    }
 }
 
 /// A new imap account not stored into the database yet.
@@ -173,6 +190,9 @@ pub struct NewImapAccount {
 
     /// The username to log to the imap server.
     pub username: String,
+
+    /// The password to log to the imap server.
+    pub password: String,
 }
 
 impl NewImapAccount {
@@ -196,6 +216,20 @@ pub struct Session {
 
     /// The secret id of the session.
     pub secret: String,
+}
+
+impl Session {
+    /// Finds a session in the database from its secret key.
+    ///
+    /// Returns none if no session was found.
+    pub fn from_secret(key: &str, db: &PgConnection) -> Option<Session> {
+        use crate::schema::sessions::dsl::*;
+        sessions
+            .filter(secret.eq(key))
+            .select((id, user_id, secret))
+            .first::<Session>(db)
+            .ok()
+    }
 }
 
 /// A new session not stored in the database yet.
