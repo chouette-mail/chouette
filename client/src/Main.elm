@@ -235,7 +235,7 @@ updateImapAccountFormMessage msg model =
         ( AddImapAccountSubmitted, AddImapAccount account ) ->
             ( AddingImapAccount account
             , Http.post
-                { url = "/api/new-imap-account"
+                { url = "/api/add-imap-account"
                 , body =
                     Http.stringBody
                         "application/x-www-form-urlencoded"

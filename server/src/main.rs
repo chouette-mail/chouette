@@ -4,6 +4,12 @@ extern crate log;
 use std::net::{SocketAddrV4, Ipv4Addr};
 use std::collections::HashMap;
 use clap::{Arg, App};
+use futures_state_stream::StateStream;
+use tokio::prelude::*;
+use tokio_imap::client::{ImapClient, TlsClient};
+use tokio_imap::types::AttrMacro;
+use imap_proto::builders::command::{CommandBuilder, FetchBuilderMessages, FetchBuilderModifiers};
+use diesel::prelude::*;
 use warp::http::header;
 use warp::http::response::Response;
 use warp::Filter;
@@ -184,7 +190,7 @@ fn main() {
             Ok(session)
         })
         .and(warp::path("api"))
-        .and(warp::path("new-imap-account"))
+        .and(warp::path("add-imap-account"))
         .and(warp::body::form())
         .map(move |session: Session, arguments: HashMap<String, String>| {
 
@@ -211,7 +217,97 @@ fn main() {
             Response::new("")
         });
 
-    info!("Done!");
+    let config_clone = config.clone();
+    let config_clone_bis = config.clone();
+    let get_mailboxes = warp::post2()
+        .and(cookie("EXAUTH"))
+        .and_then(move |key: String| -> Result<Session, Rejection> {
+            let connection = match config_clone.database.connect() {
+                Ok(c) => c,
+                Err(e) => {
+                    error!("Couldn't connect to the database: {:?}", e);
+                    panic!()
+                },
+            };
+
+            let session = match Session::from_secret(&key, &connection) {
+                Some(s) => {
+                    info!("Found session for user {}", s.user_id);
+                    s
+                },
+                None => {
+                    info!("No session found");
+                    panic!()
+                },
+            };
+
+            Ok(session)
+        })
+        .and(warp::path("api"))
+        .and(warp::path("get-mailboxes"))
+        .and(warp::body::form())
+        .and_then(move |session: Session, arguments: HashMap<String, String>| {
+
+            info!("Mailboxes requested");
+
+            let connection = match config_clone_bis.database.connect() {
+                Ok(c) => c,
+                Err(_) => panic!(),
+            };
+
+            let query_result =
+            {
+                use chouette::schema::imap_accounts::dsl::*;
+                imap_accounts
+                    .filter(user_id.eq(session.user_id))
+                    .select((id, user_id, server, username, password))
+                    .get_results::<ImapAccount>(&connection)
+            };
+
+            let query_result = match query_result {
+                Ok(a) => {
+                    a
+                },
+                Err(e) => {
+                    error!("Couldn't get imap accounts for user {}: {:?}", session.user_id, e);
+                    panic!();
+                },
+            };
+
+            let imap_account = query_result.last().unwrap();
+            let server = imap_account.server.clone();
+            let username = imap_account.username.clone();
+            let username_bis = imap_account.username.clone();
+            let username_ter = imap_account.username.clone();
+            let password = imap_account.password.clone();
+
+            info!("Connecting to the imap server {}...", server);
+
+            TlsClient::connect(&server)
+                .expect("Yo")
+                .and_then(move |connection| {
+                    info!("Connected to the imap server {}", server);
+
+                    let command = CommandBuilder::login(&username, &password);
+                    connection.1.call(command).collect()
+                })
+                .and_then(move |(_, connection)| {
+                    info!("Fetching the mailboxes for user {}", username_bis);
+                    let command = CommandBuilder::list("", "*");
+                    connection.call(command).collect()
+                })
+                .and_then(move |(response, _)| {
+                    info!("Fetched the mailboxes for user {}", username_ter);
+                    dbg!(response);
+                    Ok(())
+                })
+                .or_else(|_| future::err(warp::reject::not_found()))
+        })
+        .map(|_| {
+            Response::new("")
+        });
+
+        info!("Done!");
 
     let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
 
@@ -219,7 +315,8 @@ fn main() {
         .or(js)
         .or(register)
         .or(login)
-        .or(new_imap_account);
+        .or(new_imap_account)
+        .or(get_mailboxes);
 
     info!("Server running on {}", socket.to_string());
     warp::serve(routes).run(socket);
