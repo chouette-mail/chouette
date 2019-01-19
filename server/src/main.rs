@@ -3,15 +3,19 @@ extern crate log;
 
 use std::net::{SocketAddrV4, Ipv4Addr};
 use std::collections::HashMap;
+
 use clap::{Arg, App};
+
 use futures_state_stream::StateStream;
 use tokio::prelude::*;
 use tokio::prelude::stream::futures_ordered;
 use tokio_imap::proto::ResponseData;
 use tokio_imap::client::{ImapClient, TlsClient};
-use tokio_imap::types::{self, AttrMacro};
-use imap_proto::builders::command::{CommandBuilder, FetchBuilderMessages, FetchBuilderModifiers};
+use tokio_imap::types;
+use imap_proto::builders::command::CommandBuilder;
+
 use diesel::prelude::*;
+
 use warp::http::{header, StatusCode};
 use warp::http::response::{self, Response};
 use warp::Filter;
@@ -19,7 +23,9 @@ use warp::reject::Rejection;
 use warp::cookie::cookie;
 
 use chouette::config::ServerConfig;
-use chouette::auth::{User, Session, ImapAccount};
+use chouette::auth::user::User;
+use chouette::auth::session::Session;
+use chouette::auth::imap_account::ImapAccount;
 use chouette::mailbox::Mailbox;
 
 macro_rules! extract_or_panic {
