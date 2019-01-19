@@ -348,10 +348,7 @@ fn main() {
         })
         .map(|ref mailboxes: Vec<Vec<Mailbox>>| {
             match serde_json::to_string(mailboxes) {
-                Ok(r) => {
-                    println!("{}", r);
-                    Response::new(r)
-                },
+                Ok(r) => Response::new(r),
                 Err(_) => error_500(String::from("")),
             }
         });
