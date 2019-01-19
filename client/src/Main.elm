@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Either exposing (Either)
 import Element exposing (Element)
 import Element.Background as Background
 import Element.Border as Border
@@ -30,7 +31,8 @@ main =
 type FormStatus
     = Idle
     | Submitted
-    | Received
+    | Success
+    | Failure
 
 
 
@@ -40,7 +42,7 @@ type FormStatus
 type alias LogInFormContent =
     { username : String
     , password : String
-    , submitted : Bool
+    , status : FormStatus
     }
 
 
@@ -54,7 +56,7 @@ logInFormContentToUrlEncoded content =
 
 defaultLogInFormContent : LogInFormContent
 defaultLogInFormContent =
-    { username = "", password = "", submitted = False }
+    { username = "", password = "", status = Idle }
 
 
 type LogInFormMsg
@@ -120,13 +122,15 @@ type alias PortalContent =
 
 type Model
     = Portal PortalContent
+    | Home String
 
 
 type Msg
     = LogInFormMsg LogInFormMsg
     | RegisterFormMsg RegisterFormMsg
-    | GoToLogInForm
-    | GoToRegisterForm
+    | GoToLogInFormMsg
+    | GoToRegisterFormMsg
+    | MailboxesMsg (Result Http.Error String)
 
 
 defaultPortalContent : PortalContent
@@ -153,10 +157,15 @@ update msg model =
     case ( msg, model ) of
         ( LogInFormMsg message, Portal content ) ->
             let
-                ( newLogInForm, cmd ) =
+                ( result, cmd ) =
                     updateLogInForm message content.logInForm
             in
-            ( Portal { content | logInForm = newLogInForm }, cmd )
+            case result of
+                Either.Left newLogInForm ->
+                    ( Portal { content | logInForm = newLogInForm }, cmd )
+
+                Either.Right m ->
+                    ( m, cmd )
 
         ( RegisterFormMsg message, Portal content ) ->
             let
@@ -165,27 +174,42 @@ update msg model =
             in
             ( Portal { content | registerForm = newRegisterForm }, cmd )
 
-        ( GoToLogInForm, Portal content ) ->
+        ( GoToLogInFormMsg, Portal content ) ->
             ( Portal { content | form = LogInForm }, Cmd.none )
 
-        ( GoToRegisterForm, Portal content ) ->
+        ( GoToRegisterFormMsg, Portal content ) ->
             ( Portal { content | form = RegisterForm }, Cmd.none )
 
+        ( MailboxesMsg (Ok mailboxes), _ ) ->
+            ( Home mailboxes, Cmd.none )
 
-updateLogInForm : LogInFormMsg -> LogInFormContent -> ( LogInFormContent, Cmd Msg )
+        ( _, m ) ->
+            ( m, Cmd.none )
+
+
+{-|
+
+    This function can either return a delta on the log in form content, or a
+    completely new model in case the log in is succesful.
+
+-}
+updateLogInForm : LogInFormMsg -> LogInFormContent -> ( Either LogInFormContent Model, Cmd Msg )
 updateLogInForm msg logInForm =
     case msg of
         LogInFormUsernameChanged newUsername ->
-            ( { logInForm | username = newUsername }, Cmd.none )
+            ( Either.Left { logInForm | username = newUsername }, Cmd.none )
 
         LogInFormPasswordChanged newPassword ->
-            ( { logInForm | password = newPassword }, Cmd.none )
+            ( Either.Left { logInForm | password = newPassword }, Cmd.none )
 
         LogInFormSubmitted ->
-            ( { logInForm | submitted = True }, sendLogInRequest logInForm )
+            ( Either.Left { logInForm | status = Submitted }, requestLogIn logInForm )
 
-        LogInFormResponse resonse ->
-            ( { logInForm | submitted = False }, Cmd.none )
+        LogInFormResponse (Ok resonse) ->
+            ( Either.Left { logInForm | status = Success }, requestMailboxes )
+
+        LogInFormResponse (Err resonse) ->
+            ( Either.Left { logInForm | status = Failure }, Cmd.none )
 
 
 updateRegisterForm : RegisterFormMsg -> RegisterFormContent -> ( RegisterFormContent, Cmd Msg )
@@ -201,10 +225,13 @@ updateRegisterForm msg registerForm =
             ( { registerForm | email = newEmail }, Cmd.none )
 
         RegisterFormSubmitted ->
-            ( { registerForm | status = Submitted }, sendRegisterRequest registerForm )
+            ( { registerForm | status = Submitted }, requestRegister registerForm )
 
-        RegisterFormResponse resonse ->
-            ( { registerForm | status = Received }, Cmd.none )
+        RegisterFormResponse (Ok response) ->
+            ( { registerForm | status = Success }, Cmd.none )
+
+        RegisterFormResponse (Err response) ->
+            ( { registerForm | status = Failure }, Cmd.none )
 
 
 
@@ -218,8 +245,8 @@ httpStringBody params =
     Http.stringBody "application/x-www-form-urlencoded" params
 
 
-sendLogInRequest : LogInFormContent -> Cmd Msg
-sendLogInRequest content =
+requestLogIn : LogInFormContent -> Cmd Msg
+requestLogIn content =
     Http.post
         { url = "/api/login"
         , body = httpStringBody (logInFormContentToUrlEncoded content)
@@ -227,12 +254,21 @@ sendLogInRequest content =
         }
 
 
-sendRegisterRequest : RegisterFormContent -> Cmd Msg
-sendRegisterRequest content =
+requestRegister : RegisterFormContent -> Cmd Msg
+requestRegister content =
     Http.post
         { url = "/api/new-user"
         , body = httpStringBody (registerFormContentToUrlEncoded content)
         , expect = Http.expectString (RegisterFormMsg << RegisterFormResponse)
+        }
+
+
+requestMailboxes : Cmd Msg
+requestMailboxes =
+    Http.post
+        { url = "/api/get-mailboxes"
+        , body = Http.emptyBody
+        , expect = Http.expectString MailboxesMsg
         }
 
 
@@ -258,6 +294,59 @@ view model =
     case model of
         Portal content ->
             portalView content
+
+        Home mailboxes ->
+            homeView mailboxes
+
+
+
+-- HOME VIEWS -----------------------------------------------------------------
+
+
+homeView : String -> Html.Html Msg
+homeView mailboxes =
+    Element.layout defaultAttributes
+        (Element.column
+            (Element.width Element.fill :: defaultAttributes)
+            [ header
+            , Element.row
+                (Element.height Element.fill :: defaultAttributes)
+                [ leftMenu
+                , Element.column defaultAttributes
+                    [ Element.text mailboxes
+                    ]
+                ]
+            ]
+        )
+
+
+leftMenu : Element Msg
+leftMenu =
+    Element.column [ Element.width <| Element.fillPortion 25, Element.alignTop ]
+        [ menuItem Nothing "Add new IMAP account"
+        ]
+
+
+menuItem : Maybe Msg -> String -> Element Msg
+menuItem message linkText =
+    let
+        label =
+            Element.row
+                [ Element.width Element.fill
+                , Element.padding 20
+                , Background.color colors.accent
+                , Font.color colors.contrastedText
+                ]
+                [ Element.text linkText ]
+    in
+    Input.button [ Element.width Element.fill, Element.height Element.fill ]
+        { onPress = message
+        , label = label
+        }
+
+
+
+-- PORTAL VIEWS ---------------------------------------------------------------
 
 
 portalView : PortalContent -> Html.Html Msg
@@ -296,18 +385,25 @@ portalLogInForm : LogInFormContent -> Element Msg
 portalLogInForm content =
     let
         text =
-            if content.submitted then
-                Element.text "Logging in..."
+            case content.status of
+                Idle ->
+                    Element.text "Log in"
 
-            else
-                Element.text "Log in"
+                Submitted ->
+                    Element.text "Logging in..."
+
+                Success ->
+                    Element.text "Logged in!"
+
+                Failure ->
+                    Element.text "An error occured :'( Click to retry"
 
         message =
-            if content.submitted then
-                Nothing
+            if content.status == Idle || content.status == Failure then
+                Just (LogInFormMsg LogInFormSubmitted)
 
             else
-                Just (LogInFormMsg LogInFormSubmitted)
+                Nothing
     in
     Element.column [ Element.centerY, Element.spacing 10, Element.width <| Element.fillPortion 2 ]
         [ Styles.title "Log in"
@@ -342,7 +438,7 @@ portalLogInForm content =
             }
         , Input.button Styles.defaultAttributes
             { label = Element.text "Not registered yet ? Click here to register."
-            , onPress = Just GoToRegisterForm
+            , onPress = Just GoToRegisterFormMsg
             }
         ]
 
@@ -358,8 +454,11 @@ portalRegisterForm content =
                 Submitted ->
                     Element.text "Registering..."
 
-                Received ->
+                Success ->
                     Element.text "Succesfully registered!"
+
+                Failure ->
+                    Element.text "An error occured :'("
 
         message =
             if content.status == Idle then
@@ -409,14 +508,9 @@ portalRegisterForm content =
             }
         , Input.button Styles.defaultAttributes
             { label = Element.text "Already registered ? Click here to log in."
-            , onPress = Just GoToLogInForm
+            , onPress = Just GoToLogInFormMsg
             }
         ]
-
-
-emptyColumn : Int -> Element Msg
-emptyColumn portion =
-    Element.column [ Element.width <| Element.fillPortion portion ] []
 
 
 portalPresentation : Element msg
@@ -426,6 +520,15 @@ portalPresentation =
         , Element.paragraph [ Font.center ]
             [ Element.text description ]
         ]
+
+
+
+-- UTILS ----------------------------------------------------------------------
+
+
+emptyColumn : Int -> Element Msg
+emptyColumn portion =
+    Element.column [ Element.width <| Element.fillPortion portion ] []
 
 
 header : Element msg

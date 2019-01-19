@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use clap::{Arg, App};
 use futures_state_stream::StateStream;
 use tokio::prelude::*;
+use tokio::prelude::stream::futures_ordered;
 use tokio_imap::client::{ImapClient, TlsClient};
 use tokio_imap::types::AttrMacro;
 use imap_proto::builders::command::{CommandBuilder, FetchBuilderMessages, FetchBuilderModifiers};
@@ -276,7 +277,7 @@ fn main() {
                 Err(_) => panic!(),
             };
 
-            let query_result =
+            let query_results =
             {
                 use chouette::schema::imap_accounts::dsl::*;
                 imap_accounts
@@ -285,7 +286,7 @@ fn main() {
                     .get_results::<ImapAccount>(&connection)
             };
 
-            let query_result = match query_result {
+            let query_results = match query_results {
                 Ok(a) => {
                     a
                 },
@@ -295,23 +296,24 @@ fn main() {
                 },
             };
 
-            let imap_account = query_result.last().unwrap();
-            let server = imap_account.server.clone();
-            let username = imap_account.username.clone();
-            let username_bis = imap_account.username.clone();
-            let username_ter = imap_account.username.clone();
-            let password = imap_account.password.clone();
+            futures_ordered(query_results.into_iter().map(|imap_account| {
+                dbg!(&imap_account);
+                let server = imap_account.server.clone();
+                let username = imap_account.username.clone();
+                let username_bis = imap_account.username.clone();
+                let username_ter = imap_account.username.clone();
+                let password = imap_account.password.clone();
 
-            info!("Connecting to the imap server {}...", server);
+                info!("Connecting to the imap server {}...", server);
 
-            TlsClient::connect(&server)
-                .expect("Yo")
-                .and_then(move |connection| {
-                    info!("Connected to the imap server {}", server);
+                TlsClient::connect(&server)
+                    .expect("Yo")
+                    .and_then(move |connection| {
+                        info!("Connected to the imap server {}", server);
 
-                    let command = CommandBuilder::login(&username, &password);
-                    connection.1.call(command).collect()
-                })
+                        let command = CommandBuilder::login(&username, &password);
+                        connection.1.call(command).collect()
+                    })
                 .and_then(move |(_, connection)| {
                     info!("Fetching the mailboxes for user {}", username_bis);
                     let command = CommandBuilder::list("", "*");
@@ -319,13 +321,13 @@ fn main() {
                 })
                 .and_then(move |(response, _)| {
                     info!("Fetched the mailboxes for user {}", username_ter);
-                    dbg!(response);
                     Ok(())
                 })
                 .or_else(|_| future::err(warp::reject::not_found()))
+            })).collect()
         })
         .map(|_| {
-            Response::new("")
+            Response::new("GOOD!")
         });
 
         info!("Done!");
