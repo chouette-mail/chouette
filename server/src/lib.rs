@@ -26,9 +26,13 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
+#[macro_use]
+pub mod utils;
+
 pub mod config;
 pub mod auth;
 pub mod mailbox;
+pub mod routes;
 
 /// The diesel schema of the database.
 #[allow(missing_docs)]
