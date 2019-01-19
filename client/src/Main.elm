@@ -105,12 +105,59 @@ type RegisterFormMsg
 
 
 
+-- NEW IMAP ACCOUNT FORM ------------------------------------------------------
+
+
+type alias AddImapAccountFormContent =
+    { server : String
+    , username : String
+    , password : String
+    , status : FormStatus
+    , tested : Bool
+    }
+
+
+addImapAccountFormContentToUrlEncoded : AddImapAccountFormContent -> String
+addImapAccountFormContentToUrlEncoded content =
+    String.join "&"
+        [ "server=" ++ content.server
+        , "username=" ++ content.username
+        , "password=" ++ content.password
+        ]
+
+
+defaultAddImapAccountFormContent : AddImapAccountFormContent
+defaultAddImapAccountFormContent =
+    { server = ""
+    , username = ""
+    , password = ""
+    , status = Idle
+    , tested = False
+    }
+
+
+type AddImapAccountFormMsg
+    = AddImapAccountFormServerChanged String
+    | AddImapAccountFormUsernameChanged String
+    | AddImapAccountFormPasswordChanged String
+    | AddImapAccountFormTestSubmitted
+    | AddImapAccountFormAddSubmitted
+    | AddImapAccountFormTestResponse (Result Http.Error String)
+    | AddImapAccountFormAddResponse (Result Http.Error String)
+
+
+
 -- MAIN -----------------------------------------------------------------------
 
 
 type PortalForm
     = LogInForm
     | RegisterForm
+
+
+type HomePanel
+    = HomePanelEmpty
+    | HomePanelAddImapAccountForm
 
 
 type alias PortalContent =
@@ -120,16 +167,25 @@ type alias PortalContent =
     }
 
 
+type alias HomeContent =
+    { addImapAccountForm : AddImapAccountFormContent
+    , mailboxes : String
+    , panel : HomePanel
+    }
+
+
 type Model
     = Portal PortalContent
-    | Home String
+    | Home HomeContent
 
 
 type Msg
     = LogInFormMsg LogInFormMsg
     | RegisterFormMsg RegisterFormMsg
+    | AddImapAccountFormMsg AddImapAccountFormMsg
     | GoToLogInFormMsg
     | GoToRegisterFormMsg
+    | GoToPanelAddImapAccount
     | MailboxesMsg (Result Http.Error String)
 
 
@@ -180,8 +236,39 @@ update msg model =
         ( GoToRegisterFormMsg, Portal content ) ->
             ( Portal { content | form = RegisterForm }, Cmd.none )
 
-        ( MailboxesMsg (Ok mailboxes), _ ) ->
-            ( Home mailboxes, Cmd.none )
+        ( MailboxesMsg (Ok mailboxesContent), _ ) ->
+            ( Home
+                { addImapAccountForm = defaultAddImapAccountFormContent
+                , mailboxes = mailboxesContent
+                , panel = HomePanelEmpty
+                }
+            , Cmd.none
+            )
+
+        ( MailboxesMsg (Err mailboxesContent), Portal content ) ->
+            let
+                logInForm =
+                    content.logInForm
+
+                newLogInForm =
+                    { logInForm | status = Failure }
+            in
+            ( Portal { content | logInForm = newLogInForm }, Cmd.none )
+
+        ( GoToPanelAddImapAccount, Home content ) ->
+            ( Home { content | panel = HomePanelAddImapAccountForm }, Cmd.none )
+
+        ( AddImapAccountFormMsg message, Home content ) ->
+            let
+                ( result, cmd ) =
+                    updateAddImapAccountForm message content.addImapAccountForm
+            in
+            case result of
+                Either.Left newImapAccountForm ->
+                    ( Home { content | addImapAccountForm = newImapAccountForm }, cmd )
+
+                Either.Right newPanel ->
+                    ( Home { content | panel = newPanel }, Cmd.none )
 
         ( _, m ) ->
             ( m, Cmd.none )
@@ -234,6 +321,44 @@ updateRegisterForm msg registerForm =
             ( { registerForm | status = Failure }, Cmd.none )
 
 
+updateAddImapAccountForm :
+    AddImapAccountFormMsg
+    -> AddImapAccountFormContent
+    -> ( Either AddImapAccountFormContent HomePanel, Cmd Msg )
+updateAddImapAccountForm msg addImapAccountForm =
+    case msg of
+        AddImapAccountFormUsernameChanged newUsername ->
+            ( Either.Left { addImapAccountForm | username = newUsername, tested = False }, Cmd.none )
+
+        AddImapAccountFormPasswordChanged newPassword ->
+            ( Either.Left { addImapAccountForm | password = newPassword, tested = False }, Cmd.none )
+
+        AddImapAccountFormServerChanged newServer ->
+            ( Either.Left { addImapAccountForm | server = newServer, tested = False }, Cmd.none )
+
+        AddImapAccountFormTestSubmitted ->
+            ( Either.Left { addImapAccountForm | status = Submitted }
+            , requestTestImapAccount addImapAccountForm
+            )
+
+        AddImapAccountFormAddSubmitted ->
+            ( Either.Left { addImapAccountForm | status = Submitted }
+            , requestAddImapAccount addImapAccountForm
+            )
+
+        AddImapAccountFormTestResponse (Ok response) ->
+            ( Either.Left { addImapAccountForm | status = Success, tested = True }, Cmd.none )
+
+        AddImapAccountFormTestResponse (Err response) ->
+            ( Either.Left { addImapAccountForm | status = Failure, tested = False }, Cmd.none )
+
+        AddImapAccountFormAddResponse (Ok response) ->
+            ( Either.Right HomePanelEmpty, Cmd.none )
+
+        AddImapAccountFormAddResponse (Err response) ->
+            ( Either.Left { addImapAccountForm | status = Failure, tested = False }, Cmd.none )
+
+
 
 -------------------------------------------------------------------------------
 -- COMMANDS -------------------------------------------------------------------
@@ -261,6 +386,28 @@ requestRegister content =
         , body = httpStringBody (registerFormContentToUrlEncoded content)
         , expect = Http.expectString (RegisterFormMsg << RegisterFormResponse)
         }
+
+
+requestAboutImapAccounts url msg content =
+    Http.post
+        { url = url
+        , body = httpStringBody (addImapAccountFormContentToUrlEncoded content)
+        , expect = Http.expectString msg
+        }
+
+
+requestTestImapAccount : AddImapAccountFormContent -> Cmd Msg
+requestTestImapAccount =
+    requestAboutImapAccounts
+        "/api/test-imap-account"
+        (AddImapAccountFormMsg << AddImapAccountFormTestResponse)
+
+
+requestAddImapAccount : AddImapAccountFormContent -> Cmd Msg
+requestAddImapAccount =
+    requestAboutImapAccounts
+        "/api/add-imap-account"
+        (AddImapAccountFormMsg << AddImapAccountFormAddResponse)
 
 
 requestMailboxes : Cmd Msg
@@ -295,16 +442,16 @@ view model =
         Portal content ->
             portalView content
 
-        Home mailboxes ->
-            homeView mailboxes
+        Home content ->
+            homeView content
 
 
 
 -- HOME VIEWS -----------------------------------------------------------------
 
 
-homeView : String -> Html.Html Msg
-homeView mailboxes =
+homeView : HomeContent -> Html.Html Msg
+homeView homeContent =
     Element.layout defaultAttributes
         (Element.column
             (Element.width Element.fill :: defaultAttributes)
@@ -312,18 +459,128 @@ homeView mailboxes =
             , Element.row
                 (Element.height Element.fill :: defaultAttributes)
                 [ leftMenu
-                , Element.column defaultAttributes
-                    [ Element.text mailboxes
-                    ]
+                , homePanel homeContent
                 ]
             ]
         )
 
 
+homePanel : HomeContent -> Element Msg
+homePanel content =
+    case content.panel of
+        HomePanelEmpty ->
+            Element.column defaultAttributes
+                [ Element.text content.mailboxes
+                ]
+
+        HomePanelAddImapAccountForm ->
+            Element.column defaultAttributes
+                [ homePanelAddImapAccountForm content.addImapAccountForm ]
+
+
+homePanelAddImapAccountForm : AddImapAccountFormContent -> Element Msg
+homePanelAddImapAccountForm content =
+    let
+        testText =
+            case content.status of
+                Idle ->
+                    Element.text "Test IMAP account"
+
+                Submitted ->
+                    Element.text "Testing IMAP account..."
+
+                Success ->
+                    Element.text "IMAP account works! Click to try again."
+
+                Failure ->
+                    Element.text "Couldn't connect to IMAP server. Click to try again."
+
+        addText =
+            if content.status == Success then
+                Element.text "Add IMAP account"
+
+            else
+                Element.text "Add IMAP account (please test before adding)"
+
+        testMessage =
+            if content.status /= Submitted then
+                Just (AddImapAccountFormMsg AddImapAccountFormTestSubmitted)
+
+            else
+                Nothing
+
+        addMessage =
+            if content.status == Success then
+                Just (AddImapAccountFormMsg AddImapAccountFormAddSubmitted)
+
+            else
+                Nothing
+    in
+    Element.column
+        [ Element.width Element.fill
+        , Element.centerX
+        , Element.centerY
+        , Element.spacing 10
+        ]
+        [ Styles.title "Add a new IMAP account"
+        , Input.text Styles.defaultAttributes
+            { label =
+                Input.labelAbove (Element.centerY :: Element.padding 5 :: Styles.defaultAttributes)
+                    (Element.text "Server")
+            , onChange = AddImapAccountFormMsg << AddImapAccountFormServerChanged
+            , placeholder = Nothing
+            , text = content.server
+            }
+        , Input.text Styles.defaultAttributes
+            { label =
+                Input.labelAbove (Element.centerY :: Element.padding 5 :: Styles.defaultAttributes)
+                    (Element.text "Username (if you don't know it, it's probably your e-mail address)")
+            , onChange = AddImapAccountFormMsg << AddImapAccountFormUsernameChanged
+            , placeholder = Nothing
+            , text = content.username
+            }
+        , Input.currentPassword Styles.defaultAttributes
+            { label =
+                Input.labelAbove (Element.centerY :: Element.padding 5 :: Styles.defaultAttributes)
+                    (Element.text "Password")
+            , onChange = AddImapAccountFormMsg << AddImapAccountFormPasswordChanged
+            , placeholder = Nothing
+            , text = content.password
+            , show = False
+            }
+        , Element.row (Element.centerX :: Element.spacing 10 :: defaultAttributes)
+            [ Input.button
+                (Element.centerX
+                    :: Border.solid
+                    :: Border.width 1
+                    :: Border.rounded 5
+                    :: Background.color Styles.colors.buttonNormal
+                    :: Element.padding 10
+                    :: Styles.defaultAttributes
+                )
+                { label = testText
+                , onPress = testMessage
+                }
+            , Input.button
+                (Element.centerX
+                    :: Border.solid
+                    :: Border.width 1
+                    :: Border.rounded 5
+                    :: Background.color Styles.colors.buttonNormal
+                    :: Element.padding 10
+                    :: Styles.defaultAttributes
+                )
+                { label = addText
+                , onPress = addMessage
+                }
+            ]
+        ]
+
+
 leftMenu : Element Msg
 leftMenu =
     Element.column [ Element.width <| Element.fillPortion 25, Element.alignTop ]
-        [ menuItem Nothing "Add new IMAP account"
+        [ menuItem (Just GoToPanelAddImapAccount) "Add new IMAP account"
         ]
 
 

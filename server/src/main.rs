@@ -7,8 +7,9 @@ use clap::{Arg, App};
 use futures_state_stream::StateStream;
 use tokio::prelude::*;
 use tokio::prelude::stream::futures_ordered;
+use tokio_imap::proto::ResponseData;
 use tokio_imap::client::{ImapClient, TlsClient};
-use tokio_imap::types::AttrMacro;
+use tokio_imap::types::{self, AttrMacro};
 use imap_proto::builders::command::{CommandBuilder, FetchBuilderMessages, FetchBuilderModifiers};
 use diesel::prelude::*;
 use warp::http::{header, StatusCode};
@@ -20,6 +21,17 @@ use warp::cookie::cookie;
 use chouette::config::ServerConfig;
 use chouette::auth::{User, Session, ImapAccount};
 
+macro_rules! extract_or_panic {
+    ($map: expr, $param: expr) => {
+        match $map.get($param) {
+            Some(o) => o,
+            None => {
+                error!("Missing parameter {} in request", $param);
+                panic!();
+            },
+        }
+    }
+}
 macro_rules! extract_or_bad_request {
     ($map: expr, $param: expr) => {
         match $map.get($param) {
@@ -297,7 +309,6 @@ fn main() {
             };
 
             futures_ordered(query_results.into_iter().map(|imap_account| {
-                dbg!(&imap_account);
                 let server = imap_account.server.clone();
                 let username = imap_account.username.clone();
                 let username_bis = imap_account.username.clone();
@@ -330,6 +341,61 @@ fn main() {
             Response::new("GOOD!")
         });
 
+    let config_clone = config.clone();
+    let test_imap_account = warp::post2()
+        .and(cookie("EXAUTH"))
+        .and_then(move |key: String| -> Result<Session, Rejection> {
+            let connection = match config_clone.database.connect() {
+                Ok(c) => c,
+                Err(e) => {
+                    error!("Couldn't connect to the database: {:?}", e);
+                    panic!()
+                },
+            };
+
+            let session = match Session::from_secret(&key, &connection) {
+                Some(s) => {
+                    info!("Found session for user {}", s.user_id);
+                    s
+                },
+                None => {
+                    info!("No session found");
+                    panic!()
+                },
+            };
+
+            Ok(session)
+        })
+        .and(warp::path("api"))
+        .and(warp::path("test-imap-account"))
+        .and(warp::body::form())
+        .and_then(move |_session: Session, arguments: HashMap<String, String>| {
+
+            info!("Test imap account requested");
+
+            let server = extract_or_panic!(arguments, "server").clone();
+            let username = extract_or_panic!(arguments, "username").clone();
+            let password = extract_or_panic!(arguments, "password").clone();
+
+            info!("Connecting to the imap server {}...", server);
+
+            TlsClient::connect(&server)
+                .expect("Yo")
+                .and_then(move |connection| {
+                    info!("Connected to the imap server {}", server);
+
+                    let command = CommandBuilder::login(&username, &password);
+                    connection.1.call(command).collect()
+                })
+            .or_else(|_| future::err(warp::reject::not_found()))
+        })
+        .map(|(response, _): (Vec<ResponseData>, TlsClient)| {
+            match response.last().map(|x| x.parsed()) {
+                Some(types::Response::Done { status: types::Status::Ok, .. }) => ok_response(""),
+                _ => error_400("")
+            }
+        });
+
         info!("Done!");
 
     let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
@@ -339,6 +405,7 @@ fn main() {
         .or(register)
         .or(login)
         .or(new_imap_account)
+        .or(test_imap_account)
         .or(get_mailboxes);
 
     info!("Server running on {}", socket.to_string());
