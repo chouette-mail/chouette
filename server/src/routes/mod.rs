@@ -5,6 +5,10 @@ pub mod api;
 use warp::Filter;
 use warp::filters::BoxedFilter;
 use warp::reply::Reply;
+use warp::reject::Rejection;
+
+use crate::SERVER_CONFIG;
+use crate::auth::session::Session;
 
 use crate::routes::api::{
     register,
@@ -28,6 +32,30 @@ pub fn script() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path::end())
         .and(warp::fs::file("./dist/main.js"))
         .boxed()
+}
+
+/// Creates a filter that checks and sets the session.
+pub fn session(key: String) -> Result<Session, Rejection> {
+    let connection = match SERVER_CONFIG.database.connect() {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Couldn't connect to the database: {:?}", e);
+            panic!()
+        },
+    };
+
+    let session = match Session::from_secret(&key, &connection) {
+        Some(s) => {
+            info!("Found session for user {}", s.user_id);
+            s
+        },
+        None => {
+            info!("No session found");
+            panic!()
+        },
+    };
+
+    Ok(session)
 }
 
 /// Creates all the routes of chouette's server.

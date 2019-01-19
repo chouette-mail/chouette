@@ -18,7 +18,6 @@ use warp::reply::Reply;
 use warp::http::response::Builder;
 use warp::http::header::SET_COOKIE;
 use warp::cookie::cookie;
-use warp::reject::Rejection;
 
 use crate::SERVER_CONFIG;
 use crate::mailbox::Mailbox;
@@ -26,6 +25,7 @@ use crate::utils::{error_400, error_500, ok_response};
 use crate::auth::user::User;
 use crate::auth::session::Session;
 use crate::auth::imap_account::ImapAccount;
+use crate::routes::session;
 
 
 /// Creates the route to register new users.
@@ -119,28 +119,7 @@ pub fn add_imap_account() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
-        .and_then(|key: String| -> Result<Session, Rejection> {
-            let connection = match SERVER_CONFIG.database.connect() {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Couldn't connect to the database: {:?}", e);
-                    panic!()
-                },
-            };
-
-            let session = match Session::from_secret(&key, &connection) {
-                Some(s) => {
-                    info!("Found session for user {}", s.user_id);
-                    s
-                },
-                None => {
-                    info!("No session found");
-                    panic!()
-                },
-            };
-
-            Ok(session)
-        })
+        .and_then(session)
         .and(warp::path("api"))
         .and(warp::path("add-imap-account"))
         .and(warp::body::form())
@@ -179,28 +158,7 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
-        .and_then(move |key: String| -> Result<Session, Rejection> {
-            let connection = match SERVER_CONFIG.database.connect() {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Couldn't connect to the database: {:?}", e);
-                    panic!()
-                },
-            };
-
-            let session = match Session::from_secret(&key, &connection) {
-                Some(s) => {
-                    info!("Found session for user {}", s.user_id);
-                    s
-                },
-                None => {
-                    info!("No session found");
-                    panic!()
-                },
-            };
-
-            Ok(session)
-        })
+        .and_then(session)
         .and(warp::path("api"))
         .and(warp::path("test-imap-account"))
         .and(warp::body::form())
@@ -238,28 +196,7 @@ pub fn fetch_mailboxes() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
-        .and_then(move |key: String| -> Result<Session, Rejection> {
-            let connection = match SERVER_CONFIG.database.connect() {
-                Ok(c) => c,
-                Err(e) => {
-                    error!("Couldn't connect to the database: {:?}", e);
-                    panic!()
-                },
-            };
-
-            let session = match Session::from_secret(&key, &connection) {
-                Some(s) => {
-                    info!("Found session for user {}", s.user_id);
-                    s
-                },
-                None => {
-                    info!("No session found");
-                    panic!()
-                },
-            };
-
-            Ok(session)
-        })
+        .and_then(session)
         .and(warp::path("api"))
         .and(warp::path("get-mailboxes"))
         .and(warp::body::form())
