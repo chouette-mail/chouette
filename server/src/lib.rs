@@ -27,6 +27,9 @@ extern crate log;
 extern crate serde_derive;
 
 #[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
 pub mod utils;
 
 pub mod config;
@@ -38,3 +41,9 @@ pub mod routes;
 #[allow(missing_docs)]
 pub mod schema;
 
+use config::ServerConfig;
+
+lazy_static! {
+    static ref SERVER_CONFIG: ServerConfig = ServerConfig::from("config.toml")
+        .expect("Couldn't parse config file");
+}

@@ -2,10 +2,7 @@
 extern crate log;
 
 use std::net::{SocketAddrV4, Ipv4Addr};
-
 use clap::{Arg, App};
-
-use chouette::config::ServerConfig;
 use chouette::routes::routes;
 
 fn main() {
@@ -34,16 +31,11 @@ fn main() {
         .init()
         .expect("Couldn't initialize logger");
 
-    info!("Parsing config...");
-    let config = ServerConfig::from("config.toml")
-        .expect("Couldn't parse config file");
-    info!("Done!");
-
     info!("Connecting to the database...");
     info!("Done!");
 
     info!("Building routes...");
-    let routes = routes(config);
+    let routes = routes();
 
     let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
     info!("Server running on {}", socket.to_string());

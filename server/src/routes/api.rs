@@ -20,21 +20,22 @@ use warp::http::header::SET_COOKIE;
 use warp::cookie::cookie;
 use warp::reject::Rejection;
 
+use crate::SERVER_CONFIG;
 use crate::mailbox::Mailbox;
-use crate::config::ServerConfig;
 use crate::utils::{error_400, error_500, ok_response};
 use crate::auth::user::User;
 use crate::auth::session::Session;
 use crate::auth::imap_account::ImapAccount;
 
+
 /// Creates the route to register new users.
-pub fn register(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
+pub fn register() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(warp::path("api"))
         .and(warp::path("new-user"))
         .and(warp::body::form())
-        .map(move |argument: HashMap<String, String>| {
+        .map(|argument: HashMap<String, String>| {
 
             info!("New user requested");
 
@@ -50,7 +51,7 @@ pub fn register(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
                 },
             };
 
-            let connection = connect!(config);
+            let connection = connect!(SERVER_CONFIG);
 
             match user.save(&connection) {
                 Ok(_) => (),
@@ -68,19 +69,20 @@ pub fn register(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
 }
 
 /// Creates the route to log users, and save their sessions.
-pub fn login(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
+pub fn login() -> BoxedFilter<(impl Reply, )> {
+
     warp::post2()
         .and(warp::path("api"))
         .and(warp::path("login"))
         .and(warp::body::form())
-        .map(move |arguments: HashMap<String, String>| {
+        .map(|arguments: HashMap<String, String>| {
 
             info!("Login requested");
 
             let username = extract_or_bad_request!(arguments, "username");
             let password = extract_or_bad_request!(arguments, "password");
 
-            let connection = connect!(config);
+            let connection = connect!(SERVER_CONFIG);
 
             let user = match User::authenticate(username, password, &connection) {
                 Some(user) => {
@@ -113,14 +115,12 @@ pub fn login(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
 }
 
 /// Creates the route to add new imap accounts to users.
-pub fn add_imap_account(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
-
-    let config_clone = config.clone();
+pub fn add_imap_account() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
-        .and_then(move |key: String| -> Result<Session, Rejection> {
-            let connection = match config.database.connect() {
+        .and_then(|key: String| -> Result<Session, Rejection> {
+            let connection = match SERVER_CONFIG.database.connect() {
                 Ok(c) => c,
                 Err(e) => {
                     error!("Couldn't connect to the database: {:?}", e);
@@ -152,7 +152,7 @@ pub fn add_imap_account(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
             let username = extract_or_bad_request!(arguments, "username");
             let password = extract_or_bad_request!(arguments, "password");
 
-            let connection = connect!(config_clone);
+            let connection = connect!(SERVER_CONFIG);
 
             let imap_account = ImapAccount::new(session.user_id, imap_server, username, password);
 
@@ -175,12 +175,12 @@ pub fn add_imap_account(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
 ///
 /// It will return an error 400 if the connection didn't succeed, and an OK 200 if everything went
 /// right.
-pub fn test_imap_account(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
+pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
         .and_then(move |key: String| -> Result<Session, Rejection> {
-            let connection = match config.database.connect() {
+            let connection = match SERVER_CONFIG.database.connect() {
                 Ok(c) => c,
                 Err(e) => {
                     error!("Couldn't connect to the database: {:?}", e);
@@ -234,14 +234,12 @@ pub fn test_imap_account(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
 }
 
 /// Creates the route that allows the users to fetch the different mailboxes they own.
-pub fn fetch_mailboxes(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
-
-    let config_clone = config.clone();
+pub fn fetch_mailboxes() -> BoxedFilter<(impl Reply, )> {
 
     warp::post2()
         .and(cookie("EXAUTH"))
         .and_then(move |key: String| -> Result<Session, Rejection> {
-            let connection = match config.database.connect() {
+            let connection = match SERVER_CONFIG.database.connect() {
                 Ok(c) => c,
                 Err(e) => {
                     error!("Couldn't connect to the database: {:?}", e);
@@ -269,7 +267,7 @@ pub fn fetch_mailboxes(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
 
             info!("Mailboxes requested");
 
-            let connection = match config_clone.database.connect() {
+            let connection = match SERVER_CONFIG.database.connect() {
                 Ok(c) => c,
                 Err(_) => panic!(),
             };

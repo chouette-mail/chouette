@@ -6,7 +6,6 @@ use warp::Filter;
 use warp::filters::BoxedFilter;
 use warp::reply::Reply;
 
-use crate::config::ServerConfig;
 use crate::routes::api::{
     register,
     login,
@@ -32,13 +31,13 @@ pub fn script() -> BoxedFilter<(impl Reply, )> {
 }
 
 /// Creates all the routes of chouette's server.
-pub fn routes(config: ServerConfig) -> BoxedFilter<(impl Reply, )> {
+pub fn routes() -> BoxedFilter<(impl Reply, )> {
     index()
         .or(script())
-        .or(register(config.clone()))
-        .or(login(config.clone()))
-        .or(add_imap_account(config.clone()))
-        .or(test_imap_account(config.clone()))
-        .or(fetch_mailboxes(config.clone()))
+        .or(register())
+        .or(login())
+        .or(add_imap_account())
+        .or(test_imap_account())
+        .or(fetch_mailboxes())
         .boxed()
 }
