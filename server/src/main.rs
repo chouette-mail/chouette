@@ -5,9 +5,14 @@ use std::net::{SocketAddrV4, Ipv4Addr};
 use clap::{Arg, App};
 use chouette::routes::routes;
 
+fn parse_u16(content: &str) -> Result<u16, String> {
+    content
+        .parse::<u16>()
+        .map_err(|e| format!("{:?}", e))
+}
+
 fn main() {
 
-    #[allow(unused)]
     let matches = App::new("Chouette Mail")
         .version("0.1.0")
         .author("Thomas Forgione <thomas@forgione.fr>")
@@ -18,26 +23,31 @@ fn main() {
              .help("Display a more verbose output")
              .takes_value(false)
              .multiple(true))
+        .arg(Arg::with_name("port")
+             .short("p")
+             .long("port")
+             .default_value("8000")
+             .help("Port on which the server will listen")
+             .validator(|p| parse_u16(&p).map(|_| ())))
         .get_matches();
 
-    #[cfg(debug_assertions)]
-    let verbosity = 10;
-    #[cfg(not(debug_assertions))]
-    let verbosity = matches.occurrences_of("verbose") as usize;
+    let verbosity = if cfg!(debug_assertions) {
+        10
+    } else {
+        matches.occurrences_of("verbose")
+    };
+
+    let port = parse_u16(matches.value_of("port").unwrap()).unwrap();
 
     stderrlog::new()
         .modules(vec![module_path!(), "chouette"])
-        .verbosity(verbosity)
+        .verbosity(verbosity as usize)
         .init()
         .expect("Couldn't initialize logger");
 
-    info!("Connecting to the database...");
-    info!("Done!");
-
-    info!("Building routes...");
     let routes = routes();
 
-    let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), 7000);
+    let socket = SocketAddrV4::new(Ipv4Addr::new(127, 0, 0, 1), port);
     info!("Server running on {}", socket.to_string());
     warp::serve(routes).run(socket);
 }
