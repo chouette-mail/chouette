@@ -232,7 +232,7 @@ sendRegisterRequest content =
     Http.post
         { url = "/api/new-user"
         , body = httpStringBody (registerFormContentToUrlEncoded content)
-        , expect = Http.expectString (LogInFormMsg << LogInFormResponse)
+        , expect = Http.expectString (RegisterFormMsg << RegisterFormResponse)
         }
 
 
