@@ -153,7 +153,7 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
                     ok_response("")
                 },
                 _ => {
-                    error!("Logged in failed");
+                    error!("Log in failed");
                     error_400("")
                 },
             }
@@ -171,14 +171,11 @@ pub fn fetch_mailboxes() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("get-mailboxes"))
         .and(warp::body::form())
-        .and_then(move |session: Session, _arguments: HashMap<String, String>| {
+        .and_then(move |session: Session, _arguments: HashMap<String, String>| -> Result<Vec<ImapAccount>, Rejection> {
 
             info!("Mailboxes requested");
 
-            let connection = match SERVER_CONFIG.database.connect() {
-                Ok(c) => c,
-                Err(_) => panic!(),
-            };
+            let connection = SERVER_CONFIG.database.connect()?;
 
             let query_results = {
                 use crate::schema::imap_accounts::dsl::*;
@@ -186,17 +183,12 @@ pub fn fetch_mailboxes() -> BoxedFilter<(impl Reply, )> {
                     .filter(user_id.eq(session.user_id))
                     .select((id, user_id, server, username, password))
                     .get_results::<ImapAccount>(&connection)
+                    .map_err(Into::<Error>::into)?
             };
 
-            let query_results = match query_results {
-                Ok(a) => {
-                    a
-                },
-                Err(e) => {
-                    error!("Couldn't get imap accounts for user {}: {:?}", session.user_id, e);
-                    panic!();
-                },
-            };
+            Ok(query_results)
+        })
+        .and_then(|query_results: Vec<ImapAccount> | {
 
             futures_ordered(query_results.into_iter().map(|imap_account| {
                 let server = imap_account.server.clone();
