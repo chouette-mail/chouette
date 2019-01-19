@@ -10,8 +10,8 @@ use tokio_imap::client::{ImapClient, TlsClient};
 use tokio_imap::types::AttrMacro;
 use imap_proto::builders::command::{CommandBuilder, FetchBuilderMessages, FetchBuilderModifiers};
 use diesel::prelude::*;
-use warp::http::header;
-use warp::http::response::Response;
+use warp::http::{header, StatusCode};
+use warp::http::response::{self, Response};
 use warp::Filter;
 use warp::reject::Rejection;
 use warp::cookie::cookie;
@@ -19,13 +19,13 @@ use warp::cookie::cookie;
 use chouette::config::ServerConfig;
 use chouette::auth::{User, Session, ImapAccount};
 
-macro_rules! extract_or_empty {
+macro_rules! extract_or_bad_request {
     ($map: expr, $param: expr) => {
         match $map.get($param) {
             Some(o) => o,
             None => {
                 error!("Missing parameter {} in request", $param);
-                return Response::new("");
+                return error_400("");
             },
         }
     }
@@ -37,10 +37,32 @@ macro_rules! connect {
             Ok(c) => c,
             Err(e) => {
                 error!("Couldn't connect to the database: {:?}", e);
-                return Response::new("");
+                return error_500("");
             },
         }
     }
+}
+
+fn new_response<T>(code: StatusCode, body: T) -> Response<T> {
+    response::Builder::new()
+        .status(code)
+        .body(body)
+        .unwrap()
+}
+
+fn error_500<T>(body: T) -> Response<T> {
+    return new_response(StatusCode::INTERNAL_SERVER_ERROR, body);
+}
+
+fn error_400<T>(body: T) -> Response<T> {
+    return new_response(StatusCode::BAD_REQUEST, body);
+}
+
+fn ok_response<T>(body: T) -> Response<T> {
+    response::Builder::new()
+        .status(StatusCode::OK)
+        .body(body)
+        .unwrap()
 }
 
 fn main() {
@@ -94,15 +116,15 @@ fn main() {
 
             info!("New user requested");
 
-            let username = extract_or_empty!(argument, "username");
-            let email = extract_or_empty!(argument, "email");
-            let password = extract_or_empty!(argument, "password");
+            let username = extract_or_bad_request!(argument, "username");
+            let email = extract_or_bad_request!(argument, "email");
+            let password = extract_or_bad_request!(argument, "password");
 
             let user = match User::create(username, email, password) {
                 Ok(r) => r,
                 Err(e) => {
                     error!("Failed to create user: {:?}", e);
-                    return Response::new("")
+                    return error_500("");
                 },
             };
 
@@ -112,12 +134,12 @@ fn main() {
                 Ok(_) => (),
                 Err(e) => {
                     error!("Failed to save user to the database: {:?}", e);
-                    return Response::new("");
+                    return error_500("");
                 },
             }
 
             info!("Saved {:?}", user);
-            Response::new("")
+            ok_response("")
         });
 
     let config_clone = config.clone();
@@ -129,8 +151,8 @@ fn main() {
 
             info!("Login requested");
 
-            let username = extract_or_empty!(arguments, "username");
-            let password = extract_or_empty!(arguments, "password");
+            let username = extract_or_bad_request!(arguments, "username");
+            let password = extract_or_bad_request!(arguments, "password");
 
             let connection = connect!(config_clone);
 
@@ -141,7 +163,7 @@ fn main() {
                 },
                 None => {
                     info!("User {} sent wrong password", username);
-                    return Response::new("");
+                    return error_400("");
                 },
             };
 
@@ -152,14 +174,13 @@ fn main() {
                 },
                 Err(e) => {
                     error!("Failed to save session for user {}: {:?}", username, e);
-                    return Response::new("");
+                    return error_500("");
                 },
             };
 
             Response::builder()
                 .header(header::SET_COOKIE, format!("EXAUTH={}; SameSite=Strict; HttpOpnly", session.secret))
                 .body("")
-                .ok()
                 .unwrap()
         });
 
@@ -196,9 +217,9 @@ fn main() {
 
             info!("New imap account requested");
 
-            let imap_server = extract_or_empty!(arguments, "server");
-            let username = extract_or_empty!(arguments, "username");
-            let password = extract_or_empty!(arguments, "password");
+            let imap_server = extract_or_bad_request!(arguments, "server");
+            let username = extract_or_bad_request!(arguments, "username");
+            let password = extract_or_bad_request!(arguments, "password");
 
             let connection = connect!(config_clone_bis);
 
@@ -214,7 +235,7 @@ fn main() {
                 },
             }
 
-            Response::new("")
+            ok_response("")
         });
 
     let config_clone = config.clone();
