@@ -44,15 +44,9 @@ macro_rules! extract_or_panic {
 
 /// Extracts the value of the option and return bad request if none.
 #[macro_export]
-macro_rules! extract_or_bad_request {
+macro_rules! extract {
     ($map: expr, $param: expr) => {
-        match $map.get($param) {
-            Some(o) => o,
-            None => {
-                error!("Missing parameter {} in request", $param);
-                return crate::utils::error_400("");
-            },
-        }
+        $map.get($param).ok_or(crate::Error::MissingArgumentInForm(String::from($param)))
     }
 }
 

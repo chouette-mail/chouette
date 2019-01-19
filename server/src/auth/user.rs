@@ -13,7 +13,6 @@ use bcrypt::{DEFAULT_COST, hash};
 use crate::schema::{users, sessions};
 use crate::auth::session::{Session, NewSession};
 use crate::auth::imap_account::{ImapAccount, NewImapAccount};
-use crate::config::DatabaseError;
 
 /// A user of chouette.
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
@@ -59,11 +58,10 @@ pub struct NewUser {
 
 impl User {
     /// Creates a new user.
-    pub fn create(username: &str, email: &str, password: &str) -> Result<NewUser, ()> {
+    pub fn create(username: &str, email: &str, password: &str) -> crate::Result<NewUser> {
 
         // Hash the password
-        let hashed_password = hash(&password, DEFAULT_COST)
-            .expect("Couldn't hash password");
+        let hashed_password = hash(&password, DEFAULT_COST)?;
 
         // Generate the activation key
         let mut rng = OsRng::new().unwrap();
@@ -83,7 +81,7 @@ impl User {
     }
 
     /// Authenticates a user from its username and password.
-    pub fn authenticate(auth_username: &str, auth_password: &str, db: &PgConnection) -> Option<User> {
+    pub fn authenticate(auth_username: &str, auth_password: &str, db: &PgConnection) -> crate::Result<User> {
         use crate::schema::users::dsl::*;
 
         let user = users
@@ -96,22 +94,19 @@ impl User {
             Ok(user) => user,
             Err(e) => {
                 error!("Failed to execute request from db: {:?}", e);
-                return None;
+                return Err(crate::Error::AuthenticationFailed);
             },
         };
 
         match bcrypt::verify(&auth_password, &user.hashed_password) {
-            Ok(true) => Some(user),
-            Ok(false) => None,
-            Err(e) => {
-                error!("Failed to check password for user {:?}: {:?}", user, e);
-                None
-            }
+            Ok(true) => Ok(user),
+            Ok(false) => Err(crate::Error::AuthenticationFailed),
+            Err(e) => Err(crate::Error::BcryptError(e)),
         }
     }
 
     /// Creates or updates a session for a user that has been authenticated.
-    pub fn save_session(&self, db: &PgConnection) -> Result<Session, DatabaseError> {
+    pub fn save_session(&self, db: &PgConnection) -> crate::Result<Session> {
         // Generate the secret
         let mut rng = OsRng::new().unwrap();
         let secret = rng
@@ -137,7 +132,7 @@ impl User {
 
 impl NewUser {
     /// Saves the new user into the database.
-    pub fn save(&self, database: &PgConnection) -> Result<User, DatabaseError> {
+    pub fn save(&self, database: &PgConnection) -> crate::Result<User> {
         Ok(diesel::insert_into(users::table)
             .values(self)
             .get_result(database)?)

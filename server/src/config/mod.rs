@@ -8,7 +8,6 @@ use std::io::Read;
 use serde_derive::{Serialize, Deserialize};
 use diesel::connection::Connection;
 use diesel::pg::PgConnection;
-use diesel::result::ConnectionResult;
 
 /// Returns the string localhost.
 fn localhost() -> String {
@@ -76,8 +75,8 @@ impl DatabaseConfig {
     }
 
     /// Returns a connection to the database.
-    pub fn connect(&self) -> ConnectionResult<PgConnection> {
-        PgConnection::establish(&self.url())
+    pub fn connect(&self) -> crate::Result<PgConnection> {
+        Ok(PgConnection::establish(&self.url())?)
     }
 }
 

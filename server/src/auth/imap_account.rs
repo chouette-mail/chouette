@@ -4,7 +4,6 @@ use diesel::prelude::*;
 
 use crate::schema::imap_accounts;
 use crate::auth::user::User;
-use crate::config::DatabaseError;
 
 /// An imap account that is owned by a user.
 #[derive(Identifiable, Queryable, Associations, PartialEq, Debug)]
@@ -63,7 +62,7 @@ pub struct NewImapAccount {
 
 impl NewImapAccount {
     /// Saves a new imap account into the database and returns the corresponding imap account.
-    pub fn save(&self, db: &PgConnection) -> Result<ImapAccount, DatabaseError> {
+    pub fn save(&self, db: &PgConnection) -> crate::Result<ImapAccount> {
         Ok(diesel::insert_into(imap_accounts::table)
             .values(self)
             .get_result(db)?)

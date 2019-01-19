@@ -36,26 +36,8 @@ pub fn script() -> BoxedFilter<(impl Reply, )> {
 
 /// Creates a filter that checks and sets the session.
 pub fn session(key: String) -> Result<Session, Rejection> {
-    let connection = match SERVER_CONFIG.database.connect() {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Couldn't connect to the database: {:?}", e);
-            panic!()
-        },
-    };
-
-    let session = match Session::from_secret(&key, &connection) {
-        Some(s) => {
-            info!("Found session for user {}", s.user_id);
-            s
-        },
-        None => {
-            info!("No session found");
-            panic!()
-        },
-    };
-
-    Ok(session)
+    let connection = SERVER_CONFIG.database.connect()?;
+    Ok(Session::from_secret(&key, &connection)?)
 }
 
 /// Creates all the routes of chouette's server.

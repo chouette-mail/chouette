@@ -9,15 +9,16 @@ use tokio::prelude::*;
 use tokio::prelude::stream::futures_ordered;
 use tokio_imap::proto::ResponseData;
 use tokio_imap::client::{ImapClient, TlsClient};
-use tokio_imap::types::{Response, Status};
+use tokio_imap::types::{Response as ImapResponse, Status};
 use imap_proto::builders::command::CommandBuilder;
 
 use warp::Filter;
 use warp::filters::BoxedFilter;
 use warp::reply::Reply;
-use warp::http::response::Builder;
+use warp::http::response::{Response as HttpResponse, Builder};
 use warp::http::header::SET_COOKIE;
 use warp::cookie::cookie;
+use warp::reject::Rejection;
 
 use crate::SERVER_CONFIG;
 use crate::mailbox::Mailbox;
@@ -35,34 +36,21 @@ pub fn register() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("new-user"))
         .and(warp::body::form())
-        .map(|argument: HashMap<String, String>| {
+        .and_then(|argument: HashMap<String, String>| -> Result<HttpResponse<&str>, Rejection> {
 
             info!("New user requested");
 
-            let username = extract_or_bad_request!(argument, "username");
-            let email = extract_or_bad_request!(argument, "email");
-            let password = extract_or_bad_request!(argument, "password");
+            let username = extract!(argument, "username")?;
+            let email = extract!(argument, "email")?;
+            let password = extract!(argument, "password")?;
 
-            let user = match User::create(username, email, password) {
-                Ok(r) => r,
-                Err(e) => {
-                    error!("Failed to create user: {:?}", e);
-                    return error_500("");
-                },
-            };
+            let user = User::create(username, email, password)?;
+            let connection = SERVER_CONFIG.database.connect()?;
 
-            let connection = connect!(SERVER_CONFIG);
-
-            match user.save(&connection) {
-                Ok(_) => (),
-                Err(e) => {
-                    error!("Failed to save user to the database: {:?}", e);
-                    return error_500("");
-                },
-            }
-
+            user.save(&connection)?;
             info!("Saved {:?}", user);
-            ok_response("")
+
+            Ok(ok_response(""))
         })
         .boxed()
 
@@ -75,41 +63,20 @@ pub fn login() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("login"))
         .and(warp::body::form())
-        .map(|arguments: HashMap<String, String>| {
+        .and_then(|arguments: HashMap<String, String>| -> Result<HttpResponse<&str>, Rejection> {
 
             info!("Login requested");
 
-            let username = extract_or_bad_request!(arguments, "username");
-            let password = extract_or_bad_request!(arguments, "password");
+            let username = extract!(arguments, "username")?;
+            let password = extract!(arguments, "password")?;
+            let connection = SERVER_CONFIG.database.connect()?;
+            let user = User::authenticate(username, password, &connection)?;
+            let session = user.save_session(&connection)?;
 
-            let connection = connect!(SERVER_CONFIG);
-
-            let user = match User::authenticate(username, password, &connection) {
-                Some(user) => {
-                    info!("User {} authenticated", username);
-                    user
-                },
-                None => {
-                    info!("User {} sent wrong password", username);
-                    return error_400("");
-                },
-            };
-
-            let session = match user.save_session(&connection) {
-                Ok(session) => {
-                    info!("Session saved for user {}", username);
-                    session
-               },
-                Err(e) => {
-                    error!("Failed to save session for user {}: {:?}", username, e);
-                    return error_500("");
-                },
-            };
-
-            Builder::new()
+            Ok(Builder::new()
                 .header(SET_COOKIE, format!("EXAUTH={}; SameSite=Strict; HttpOpnly", session.secret))
                 .body("")
-                .unwrap()
+                .unwrap())
         })
         .boxed()
 }
@@ -123,29 +90,18 @@ pub fn add_imap_account() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("add-imap-account"))
         .and(warp::body::form())
-        .map(move |session: Session, arguments: HashMap<String, String>| {
+        .and_then(move |session: Session, arguments: HashMap<String, String>| -> Result<HttpResponse<&str>, Rejection> {
 
             info!("New imap account requested");
 
-            let imap_server = extract_or_bad_request!(arguments, "server");
-            let username = extract_or_bad_request!(arguments, "username");
-            let password = extract_or_bad_request!(arguments, "password");
-
-            let connection = connect!(SERVER_CONFIG);
-
+            let imap_server = extract!(arguments, "server")?;
+            let username = extract!(arguments, "username")?;
+            let password = extract!(arguments, "password")?;
+            let connection = SERVER_CONFIG.database.connect()?;
             let imap_account = ImapAccount::new(session.user_id, imap_server, username, password);
 
-            match imap_account.save(&connection) {
-                Ok(_) => {
-                    info!("Imap account saved succesfully for user {}", session.user_id);
-                },
-                Err(e) => {
-                    error!("Couldn't connect save imap account to the database: {:?}", e);
-                    panic!()
-                },
-            }
-
-            ok_response("")
+            imap_account.save(&connection)?;
+            Ok(ok_response(""))
         })
         .boxed()
 }
@@ -162,7 +118,7 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("test-imap-account"))
         .and(warp::body::form())
-        .and_then(move |_session: Session, arguments: HashMap<String, String>| {
+        .and_then(|_session: Session, arguments: HashMap<String, String>| {
 
             info!("Test imap account requested");
 
@@ -184,7 +140,7 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
         })
         .map(|(response, _): (Vec<ResponseData>, TlsClient)| {
             match response.last().map(|x| x.parsed()) {
-                Some(Response::Done { status: Status::Ok, .. }) => ok_response(""),
+                Some(ImapResponse::Done { status: Status::Ok, .. }) => ok_response(""),
                 _ => error_400("")
             }
         })

@@ -24,13 +24,13 @@ impl Session {
     /// Finds a session in the database from its secret key.
     ///
     /// Returns none if no session was found.
-    pub fn from_secret(key: &str, db: &PgConnection) -> Option<Session> {
+    pub fn from_secret(key: &str, db: &PgConnection) -> crate::Result<Session> {
         use crate::schema::sessions::dsl::*;
         sessions
             .filter(secret.eq(key))
             .select((id, user_id, secret))
             .first::<Session>(db)
-            .ok()
+            .map_err(|_| crate::Error::SessionDoesNotExist)
     }
 }
 
