@@ -24,7 +24,7 @@ client-dev: client/src/** client-static
 
 client-watch:
 	@/bin/echo -e "\033[32;1m    Watching\033[0m chouette-client"
-	@cd client && $(ELMLIVE) src/Main.elm -d ../$(BUILD_DIR)/ -- --output ../$(BUILD_DIR)/main.js
+	@cd client && $(ELMLIVE) src/Main.elm -p 7000 -d ../$(BUILD_DIR)/ -- --output ../$(BUILD_DIR)/main.js
 
 server-dev:
 	@cd server && cargo build
