@@ -9,6 +9,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html
 import Http
+import Json.Decode exposing (Decoder, field, list, string)
 import Styles exposing (colors, defaultAttributes)
 
 
@@ -33,6 +34,15 @@ type FormStatus
     | Submitted
     | Success
     | Failure
+
+
+type alias Mailbox =
+    { name : List String
+    }
+
+
+mailboxesDecoder =
+    list (list (field "name" (list string)))
 
 
 
@@ -169,7 +179,7 @@ type alias PortalContent =
 
 type alias HomeContent =
     { addImapAccountForm : AddImapAccountFormContent
-    , mailboxes : String
+    , mailboxes : List (List (List String))
     , panel : HomePanel
     }
 
@@ -186,7 +196,7 @@ type Msg
     | GoToLogInFormMsg
     | GoToRegisterFormMsg
     | GoToPanelAddImapAccount
-    | MailboxesMsg (Result Http.Error String)
+    | MailboxesMsg (Result Http.Error (List (List (List String))))
 
 
 defaultPortalContent : PortalContent
@@ -415,7 +425,7 @@ requestMailboxes =
     Http.post
         { url = "/api/get-mailboxes"
         , body = Http.emptyBody
-        , expect = Http.expectString MailboxesMsg
+        , expect = Http.expectJson MailboxesMsg mailboxesDecoder
         }
 
 
@@ -458,7 +468,7 @@ homeView homeContent =
             [ header
             , Element.row
                 (Element.height Element.fill :: defaultAttributes)
-                [ leftMenu
+                [ leftMenu homeContent
                 , homePanel homeContent
                 ]
             ]
@@ -470,8 +480,7 @@ homePanel content =
     case content.panel of
         HomePanelEmpty ->
             Element.column defaultAttributes
-                [ Element.text content.mailboxes
-                ]
+                []
 
         HomePanelAddImapAccountForm ->
             Element.column defaultAttributes
@@ -577,11 +586,22 @@ homePanelAddImapAccountForm content =
         ]
 
 
-leftMenu : Element Msg
-leftMenu =
+leftMenu : HomeContent -> Element Msg
+leftMenu homeContent =
+    let
+        mailboxes =
+            List.concat homeContent.mailboxes
+
+        names =
+            List.map (String.join "/") mailboxes
+
+        mailboxItems =
+            List.map (menuItem Nothing) names
+    in
     Element.column [ Element.width <| Element.fillPortion 25, Element.alignTop ]
-        [ menuItem (Just GoToPanelAddImapAccount) "Add new IMAP account"
-        ]
+        (menuItem (Just GoToPanelAddImapAccount) "Add new IMAP account"
+            :: mailboxItems
+        )
 
 
 menuItem : Maybe Msg -> String -> Element Msg

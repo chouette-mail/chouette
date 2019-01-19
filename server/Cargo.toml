@@ -6,8 +6,8 @@ edition = "2018"
 
 [dependencies]
 warp = "0.1.11"
-serde = "1.0.0"
-serde_derive = "1.0.0"
+serde = "1.0.85"
+serde_derive = "1.0.85"
 toml = "0.4"
 diesel = { version = "1.0.0", features = ["postgres"] }
 rand = "0.6.1"
@@ -19,3 +19,4 @@ futures-state-stream = "0.1.1"
 tokio-imap = "0.4.0"
 tokio = "0.1.14"
 imap-proto = "0.6.0"
+serde_json = "1.0.36"

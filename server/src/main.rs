@@ -20,6 +20,7 @@ use warp::cookie::cookie;
 
 use chouette::config::ServerConfig;
 use chouette::auth::{User, Session, ImapAccount};
+use chouette::mailbox::Mailbox;
 
 macro_rules! extract_or_panic {
     ($map: expr, $param: expr) => {
@@ -332,13 +333,27 @@ fn main() {
                 })
                 .and_then(move |(response, _)| {
                     info!("Fetched the mailboxes for user {}", username_ter);
-                    Ok(())
+
+                    let mut mailboxes = vec![];
+                    for data in response {
+                        if let Ok(mailbox) = Mailbox::from_data(&data.parsed()) {
+                            mailboxes.push(mailbox);
+                        }
+                    }
+
+                    Ok(mailboxes)
                 })
                 .or_else(|_| future::err(warp::reject::not_found()))
             })).collect()
         })
-        .map(|_| {
-            Response::new("GOOD!")
+        .map(|ref mailboxes: Vec<Vec<Mailbox>>| {
+            match serde_json::to_string(mailboxes) {
+                Ok(r) => {
+                    println!("{}", r);
+                    Response::new(r)
+                },
+                Err(_) => error_500(String::from("")),
+            }
         });
 
     let config_clone = config.clone();
