@@ -2,12 +2,14 @@
 
 use std::path::Path;
 use std::fs::File;
-use std::io;
+use std::{io, result};
 use std::io::Read;
 
 use serde_derive::{Serialize, Deserialize};
 use diesel::connection::Connection;
 use diesel::pg::PgConnection;
+
+use crate::Result;
 
 /// Returns the string localhost.
 fn localhost() -> String {
@@ -37,7 +39,7 @@ pub struct ServerConfig {
 
 impl ServerConfig {
     /// Creates a new server config from a path to a toml file.
-    pub fn from<P: AsRef<Path>>(path: P) -> Result<ServerConfig, Error> {
+    pub fn from<P: AsRef<Path>>(path: P) -> result::Result<ServerConfig, Error> {
         let mut content = String::new();
         let mut toml_file = File::open(path)?;
         toml_file.read_to_string(&mut content)?;
@@ -75,7 +77,7 @@ impl DatabaseConfig {
     }
 
     /// Returns a connection to the database.
-    pub fn connect(&self) -> crate::Result<PgConnection> {
+    pub fn connect(&self) -> Result<PgConnection> {
         Ok(PgConnection::establish(&self.url())?)
     }
 }

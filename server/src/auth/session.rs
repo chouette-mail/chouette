@@ -3,6 +3,7 @@
 use diesel::prelude::*;
 use diesel::pg::PgConnection;
 
+use crate::{Error, Result};
 use crate::schema::sessions;
 use crate::auth::user::User;
 
@@ -24,13 +25,13 @@ impl Session {
     /// Finds a session in the database from its secret key.
     ///
     /// Returns none if no session was found.
-    pub fn from_secret(key: &str, db: &PgConnection) -> crate::Result<Session> {
+    pub fn from_secret(key: &str, db: &PgConnection) -> Result<Session> {
         use crate::schema::sessions::dsl::*;
         sessions
             .filter(secret.eq(key))
             .select((id, user_id, secret))
             .first::<Session>(db)
-            .map_err(|_| crate::Error::SessionDoesNotExist)
+            .map_err(|_| Error::SessionDoesNotExist)
     }
 }
 

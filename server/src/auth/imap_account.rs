@@ -2,6 +2,7 @@
 
 use diesel::prelude::*;
 
+use crate::Result;
 use crate::schema::imap_accounts;
 use crate::auth::user::User;
 
@@ -62,7 +63,7 @@ pub struct NewImapAccount {
 
 impl NewImapAccount {
     /// Saves a new imap account into the database and returns the corresponding imap account.
-    pub fn save(&self, db: &PgConnection) -> crate::Result<ImapAccount> {
+    pub fn save(&self, db: &PgConnection) -> Result<ImapAccount> {
         Ok(diesel::insert_into(imap_accounts::table)
             .values(self)
             .get_result(db)?)

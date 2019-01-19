@@ -20,7 +20,7 @@ use warp::http::header::SET_COOKIE;
 use warp::cookie::cookie;
 use warp::reject::Rejection;
 
-use crate::SERVER_CONFIG;
+use crate::{Error, SERVER_CONFIG};
 use crate::mailbox::Mailbox;
 use crate::utils::{error_400, error_500, ok_response};
 use crate::auth::user::User;
@@ -129,11 +129,11 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
 
             info!("Connecting to the imap server {}...", server);
 
-            Ok((TlsClient::connect(&server).map_err(|e| Into::<crate::Error>::into(e))?, command))
+            Ok((TlsClient::connect(&server).map_err(|e| Into::<Error>::into(e))?, command))
         })
         .and_then(|(connection, command): (ImapConnectFuture, Command)| {
             let future = connection.map_err(|e| {
-                let e = Into::<crate::Error>::into(e);
+                let e = Into::<Error>::into(e);
                 Into::<Rejection>::into(e)
             });
 
@@ -142,7 +142,7 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
         .and_then(|((_, connection), command): ((ResponseData, TlsClient), Command) | {
             info!("Connected to imap server, logging in...");
             connection.call(command).collect().map_err(|e| {
-                let e = Into::<crate::Error>::into(e);
+                let e = Into::<Error>::into(e);
                 Into::<Rejection>::into(e)
             })
         })
