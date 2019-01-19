@@ -1,5 +1,8 @@
 //! This crate contains everything needed by the server.
 
+// Diesel generates massive amounts of warnings that are disabled with this.
+#![allow(proc_macro_derive_resolution_fallback)]
+
 #![warn(missing_docs)]
 
 macro_rules! impl_from_error {

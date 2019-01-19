@@ -87,6 +87,7 @@ fn ok_response<T>(body: T) -> Response<T> {
 
 fn main() {
 
+    #[allow(unused)]
     let matches = App::new("Chouette Mail")
         .version("0.1.0")
         .author("Thomas Forgione <thomas@forgione.fr>")
@@ -287,7 +288,7 @@ fn main() {
         .and(warp::path("api"))
         .and(warp::path("get-mailboxes"))
         .and(warp::body::form())
-        .and_then(move |session: Session, arguments: HashMap<String, String>| {
+        .and_then(move |session: Session, _arguments: HashMap<String, String>| {
 
             info!("Mailboxes requested");
 
