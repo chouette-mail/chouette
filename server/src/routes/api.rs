@@ -8,9 +8,9 @@ use futures_state_stream::StateStream;
 use tokio::prelude::*;
 use tokio::prelude::stream::futures_ordered;
 use tokio_imap::proto::ResponseData;
-use tokio_imap::client::{ImapClient, TlsClient};
+use tokio_imap::client::{ImapClient, ImapConnectFuture, TlsClient};
 use tokio_imap::types::{Response as ImapResponse, Status};
-use imap_proto::builders::command::CommandBuilder;
+use imap_proto::builders::command::{Command, CommandBuilder};
 
 use warp::Filter;
 use warp::filters::BoxedFilter;
@@ -118,33 +118,48 @@ pub fn test_imap_account() -> BoxedFilter<(impl Reply, )> {
         .and(warp::path("api"))
         .and(warp::path("test-imap-account"))
         .and(warp::body::form())
-        .and_then(|_session: Session, arguments: HashMap<String, String>| {
+        .and_then(|_session: Session, arguments: HashMap<String, String>| -> Result<(ImapConnectFuture, Command), Rejection> {
 
             info!("Test imap account requested");
 
-            let server = extract_or_panic!(arguments, "server").clone();
-            let username = extract_or_panic!(arguments, "username").clone();
-            let password = extract_or_panic!(arguments, "password").clone();
+            let server = extract!(arguments, "server")?;
+            let username = extract!(arguments, "username")?;
+            let password = extract!(arguments, "password")?;
+            let command = CommandBuilder::login(username, password);
 
             info!("Connecting to the imap server {}...", server);
 
-            TlsClient::connect(&server)
-                .expect("Yo")
-                .and_then(move |connection| {
-                    info!("Connected to the imap server {}", server);
+            Ok((TlsClient::connect(&server).map_err(|e| Into::<crate::Error>::into(e))?, command))
+        })
+        .and_then(|(connection, command): (ImapConnectFuture, Command)| {
+            let future = connection.map_err(|e| {
+                let e = Into::<crate::Error>::into(e);
+                Into::<Rejection>::into(e)
+            });
 
-                    let command = CommandBuilder::login(&username, &password);
-                    connection.1.call(command).collect()
-                })
-            .or_else(|_| future::err(warp::reject::not_found()))
+            (future, Ok(command))
+        })
+        .and_then(|((_, connection), command): ((ResponseData, TlsClient), Command) | {
+            info!("Connected to imap server, logging in...");
+            connection.call(command).collect().map_err(|e| {
+                let e = Into::<crate::Error>::into(e);
+                Into::<Rejection>::into(e)
+            })
         })
         .map(|(response, _): (Vec<ResponseData>, TlsClient)| {
             match response.last().map(|x| x.parsed()) {
-                Some(ImapResponse::Done { status: Status::Ok, .. }) => ok_response(""),
-                _ => error_400("")
+                Some(ImapResponse::Done { status: Status::Ok, .. }) => {
+                    info!("Logged in succesfully");
+                    ok_response("")
+                },
+                _ => {
+                    error!("Logged in failed");
+                    error_400("")
+                },
             }
         })
         .boxed()
+
 }
 
 /// Creates the route that allows the users to fetch the different mailboxes they own.
