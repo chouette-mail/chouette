@@ -20,3 +20,11 @@ CREATE TABLE imap_accounts (
     username VARCHAR NOT NULL,
     password VARCHAR NOT NULL
 );
+
+CREATE TABLE smtp_accounts (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users (id),
+    server VARCHAR NOT NULL,
+    username VARCHAR NOT NULL,
+    password VARCHAR NOT NULL
+);

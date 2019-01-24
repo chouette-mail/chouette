@@ -13,7 +13,7 @@ use bcrypt::{DEFAULT_COST, hash};
 use crate::{Error, Result};
 use crate::schema::{users, sessions};
 use crate::auth::session::{Session, NewSession};
-use crate::auth::imap_account::{ImapAccount, NewImapAccount};
+use crate::auth::remote_account::{ImapAccount, NewImapAccount};
 
 /// A user of chouette.
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
@@ -126,7 +126,7 @@ impl User {
     }
 
     /// Adds a new imap server for the user.
-    pub fn new_imap_account(&self, server: &str, username: &str, password: &str) -> NewImapAccount {
+    pub fn new_remote_account(&self, server: &str, username: &str, password: &str) -> NewImapAccount {
         ImapAccount::new(self.id, server, username, password)
     }
 }

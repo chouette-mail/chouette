@@ -25,7 +25,7 @@ use crate::mailbox::Mailbox;
 use crate::utils::{error_400, error_500, ok_response};
 use crate::auth::user::User;
 use crate::auth::session::Session;
-use crate::auth::imap_account::ImapAccount;
+use crate::auth::remote_account::ImapAccount;
 use crate::routes::session;
 
 
