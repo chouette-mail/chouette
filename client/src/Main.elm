@@ -10,8 +10,8 @@ import Element.Input as Input
 import Html
 import Http
 import Json.Decode exposing (Decoder, field, list, string)
-import Styles exposing (colors, defaultAttributes)
-
+import Styles exposing (colors, defaultAttributes, fontSizes)
+import Component.Button exposing (floatingButton)
 
 main =
     Browser.element
@@ -664,16 +664,16 @@ portalLogInForm content =
         text =
             case content.status of
                 Idle ->
-                    Element.text "Log in"
+                    "Log in"
 
                 Submitted ->
-                    Element.text "Logging in..."
+                    "Logging in..."
 
                 Success ->
-                    Element.text "Logged in!"
+                    "Logged in!"
 
                 Failure ->
-                    Element.text "An error occured :'( Click to retry"
+                    "An error occured :'( Click to retry"
 
         message =
             if content.status == Idle || content.status == Failure then
@@ -682,7 +682,7 @@ portalLogInForm content =
             else
                 Nothing
     in
-    Element.column [ Element.centerY, Element.spacing 10, Element.width <| Element.fillPortion 2 ]
+    Element.column [ Element.centerX, Element.centerY, Element.spacing 12, Element.width <| Element.fillPortion 2 ]
         [ Styles.title "Log in"
         , Input.text Styles.defaultAttributes
             { label =
@@ -701,19 +701,8 @@ portalLogInForm content =
             , text = content.password
             , show = False
             }
-        , Input.button
-            (Element.centerX
-                :: Border.solid
-                :: Border.width 1
-                :: Border.rounded 5
-                :: Background.color Styles.colors.buttonNormal
-                :: Element.padding 10
-                :: Styles.defaultAttributes
-            )
-            { label = text
-            , onPress = message
-            }
-        , Input.button Styles.defaultAttributes
+        , floatingButton text message
+        , Input.button [ Font.size fontSizes.small ]
             { label = Element.text "Not registered yet ? Click here to register."
             , onPress = Just GoToRegisterFormMsg
             }
@@ -818,7 +807,7 @@ header =
         , Background.gradient { angle = pi / 2, steps = [ colors.accentLight, colors.accent ] }
         ]
         [ Element.column [ Element.width <| Element.fillPortion 3 ]
-            [ Element.text "Logo" ]
+            [ Element.text "chouette" ]
         , Element.column [ Element.width <| Element.fillPortion 5 ]
             [ Element.text "Search bar" ]
         , Element.column [ Element.width <| Element.fillPortion 5 ]
