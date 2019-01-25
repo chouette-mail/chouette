@@ -2,17 +2,11 @@
 
 use diesel::prelude::*;
 
-use futures_state_stream::StateStream;
-use tokio::prelude::*;
-use tokio::prelude::future::*;
-use tokio_imap::client::{ImapClient, ImapConnectFuture, TlsClient};
-use imap_proto::builders::command::{Command, CommandBuilder};
-
 use crate::{Error, Result};
-use crate::mailbox::Mailbox;
 use crate::schema::imap_accounts;
 use crate::schema::smtp_accounts;
 use crate::auth::user::User;
+use crate::mailbox::Mailbox;
 
 macro_rules! make_account {
     ($queryable_struct: ident, $insertable_struct: ident, $table: expr, $table_name: expr) => {
@@ -90,51 +84,33 @@ make_account!(SmtpAccount, NewSmtpAccount, smtp_accounts::table, "smtp_accounts"
 impl ImapAccount {
 
     /// Tries to connect to the imap account.
-    pub fn test(server: &str, username: &str, password: &str) -> Result<impl Future> {
-        let username = String::from(username);
-        let password = String::from(password);
-        let command = CommandBuilder::login(&username, &password);
-
-        Ok(TlsClient::connect(server)?
-            .map_err(Into::<Error>::into)
-            .and_then(|(_, connection)| {
-                connection.call(command).collect()
-                    .map_err(Into::<Error>::into)
-            }))
+    pub fn test(server: &str, username: &str, password: &str) -> Result<()> {
+        let tls = native_tls::TlsConnector::builder().build()?;
+        let client = imap::connect((server, 993), server, &tls)?;
+        client.login(username, password)?;
+        Ok(())
     }
 
     /// Fetches the mailboxes of the imap account.
-    pub fn fetch_mailboxes(self) -> impl Future {
+    pub fn fetch_mailboxes(&self) -> Result<Vec<Mailbox>> {
+        let tls = native_tls::TlsConnector::builder().build()?;
+        let client = imap::connect((&self.server as &str, 993), &self.server, &tls)?;
+        let mut session = client.login(&self.username, &self.password)?;
 
-        let username = self.username.clone();
-        let username_bis = self.username.clone();
+        Ok(session.list(Some("/"), Some("*"))?
+            .into_iter()
+            .map(Mailbox::from)
+            .collect())
 
-        TlsClient::connect(&self.server)
-            .into_future()
-            .and_then(|x| x)
-            .and_then(move |connection| {
-                info!("Connected to the imap server {}", self.server);
-
-                let command = CommandBuilder::login(&self.username, &self.password);
-                connection.1.call(command).collect()
-            })
-        .and_then(move |(_, connection)| {
-            info!("Fetching the mailboxes for user {}", username);
-            let command = CommandBuilder::list("", "*");
-            connection.call(command).collect()
-        })
-        .and_then(move |(response, _)| {
-            info!("Fetched the mailboxes for user {}", username_bis);
-
-            let mut mailboxes = vec![];
-            for data in response {
-                if let Ok(mailbox) = Mailbox::from_data(&data.parsed()) {
-                    mailboxes.push(mailbox);
-                }
-            }
-
-            Ok(mailboxes)
-        })
     }
 
+    /// Fetches all the imap accounts of the user with the corresponding id.
+    pub fn from_user_id(user: i32, connection: &PgConnection) -> Result<Vec<ImapAccount>> {
+        use crate::schema::imap_accounts::dsl::*;
+        Ok(imap_accounts
+            .filter(user_id.eq(user))
+            .select((id, user_id, server, username, password))
+            .get_results::<ImapAccount>(connection)
+            .map_err(Into::<Error>::into)?)
+    }
 }
