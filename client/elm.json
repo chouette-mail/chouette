@@ -12,6 +12,7 @@
             "elm/http": "2.0.0",
             "elm/json": "1.1.2",
             "mdgriffith/elm-ui": "1.1.0",
+            "tesk9/palette": "1.2.0",
             "toastal/either": "3.5.0"
         },
         "indirect": {
