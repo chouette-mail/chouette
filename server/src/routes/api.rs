@@ -200,7 +200,8 @@ pub fn fetch_mailboxes() -> BoxedFilter<(impl Reply, )> {
                 info!("Connecting to the imap server {}...", server);
 
                 TlsClient::connect(&server)
-                    .expect("Yo")
+                    .into_future()
+                    .and_then(|x| x)
                     .and_then(move |connection| {
                         info!("Connected to the imap server {}", server);
 
