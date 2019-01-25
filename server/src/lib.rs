@@ -1,6 +1,7 @@
 //! This crate contains everything needed by the server.
 
 // Diesel generates massive amounts of warnings that are disabled with this.
+#![feature(proc_macro_hygiene, decl_macro)]
 #![allow(proc_macro_derive_resolution_fallback)]
 
 #![warn(missing_docs)]
@@ -25,11 +26,15 @@ extern crate serde_derive;
 extern crate lazy_static;
 
 #[macro_use]
+extern crate rocket;
+
+#[macro_use]
 pub mod utils;
 
 pub mod config;
 pub mod auth;
 pub mod mailbox;
+pub mod routes;
 
 /// The diesel schema of the database.
 #[allow(missing_docs)]
@@ -38,12 +43,14 @@ pub mod schema;
 use config::ServerConfig;
 
 lazy_static! {
+    /// The configuration of the server.
     pub static ref SERVER_CONFIG: ServerConfig = ServerConfig::from("config.toml")
         .expect("Couldn't parse config file");
 }
 
 use std::{io, result};
 use bcrypt::BcryptError;
+use rocket::error::LaunchError;
 
 /// The different errors that can occur when processing a request.
 #[derive(Debug)]
@@ -95,3 +102,17 @@ impl<T> From<(imap::error::Error, T)> for Error {
 
 /// The result type of this library.
 pub type Result<T> = result::Result<T, Error>;
+
+/// Mounts all the routes and starts the server.
+pub fn start() -> LaunchError {
+    rocket::ignite()
+        .mount("/", routes![routes::index, routes::script])
+        .mount("/api", routes![
+            routes::login::login,
+            routes::new_user::new_user,
+            routes::imap_account::test_imap_account,
+            routes::imap_account::add_imap_account,
+            routes::imap_account::fetch_mailboxes,
+        ])
+        .launch()
+}
