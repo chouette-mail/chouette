@@ -1,12 +1,19 @@
 //! This module contains the structures to manipulate imap accounts.
 
+use std::io::{Read, Write};
+use std::net::TcpStream;
+
 use diesel::prelude::*;
+
+use native_tls::TlsStream;
+use imap::Session;
 
 use crate::{Error, Result};
 use crate::schema::imap_accounts;
 use crate::schema::smtp_accounts;
 use crate::auth::user::User;
 use crate::mailbox::Mailbox;
+use crate::mailbox::mail::{Mail, HeaderValue, decode_subject};
 
 macro_rules! make_account {
     ($queryable_struct: ident, $insertable_struct: ident, $table: expr, $table_name: expr) => {
@@ -84,18 +91,20 @@ make_account!(SmtpAccount, NewSmtpAccount, smtp_accounts::table, "smtp_accounts"
 impl ImapAccount {
 
     /// Tries to connect to the imap account.
-    pub fn test(server: &str, username: &str, password: &str) -> Result<()> {
+    pub fn test(server: &str, username: &str, password: &str) -> Result<Session<TlsStream<TcpStream>>> {
         let tls = native_tls::TlsConnector::builder().build()?;
         let client = imap::connect((server, 993), server, &tls)?;
-        client.login(username, password)?;
-        Ok(())
+        Ok(client.login(username, password)?)
+    }
+
+    /// Logs in the imap account and return the session.
+    pub fn login(&self) -> Result<Session<TlsStream<TcpStream>>> {
+        ImapAccount::test(&self.server, &self.username, &self.password)
     }
 
     /// Fetches the mailboxes of the imap account.
     pub fn fetch_mailboxes(&self) -> Result<Vec<Mailbox>> {
-        let tls = native_tls::TlsConnector::builder().build()?;
-        let client = imap::connect((&self.server as &str, 993), &self.server, &tls)?;
-        let mut session = client.login(&self.username, &self.password)?;
+        let mut session = self.login()?;
 
         Ok(session.list(Some("/"), Some("*"))?
             .into_iter()
@@ -112,5 +121,35 @@ impl ImapAccount {
             .select((id, user_id, server, username, password))
             .get_results::<ImapAccount>(connection)
             .map_err(Into::<Error>::into)?)
+    }
+
+    /// Fetches all the subjects of mails in a range.
+    pub fn fetch_subjects(&self, mailbox: &str, start: usize, end: usize) -> Result<Vec<String>> {
+        let mut session = self.login()?;
+        session.select(mailbox)?;
+        let mut subjects = vec![];
+
+        for i in start .. end {
+            if let Ok(message) = session.fetch(i.to_string(), "RFC822") {
+                let message = if let Some(m) = message.iter().next() {
+                    m
+                } else {
+                    continue;
+                };
+                let body = message.body().unwrap_or(&[]);
+                let mail = Mail::from_utf8(body)?;
+
+                if let Some(HeaderValue::Unknown(subject)) = mail.headers.get("Subject") {
+                    let subject = match decode_subject(subject) {
+                        Ok(s) => s,
+                        Err(_) => "Couldn't decode subject".to_owned(),
+                    };
+
+                    subjects.push(subject);
+                };
+            }
+        }
+
+        Ok(subjects)
     }
 }
