@@ -2,7 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Colors exposing (colorToElement)
-import Component.Block exposing (floatingBlock)
+import Component.Block exposing (floatingBlock, floatingBlockWithProperties)
 import Component.Button exposing (floatingButton)
 import Either exposing (Either)
 import Element exposing (Element)
@@ -492,12 +492,20 @@ homeView : HomeContent -> Html.Html Msg
 homeView homeContent =
     Element.layout defaultAttributes
         (Element.column
-            (Element.width Element.fill :: defaultAttributes)
+            [ Element.width Element.fill ]
             [ header
-            , Element.row
-                (Element.height Element.fill :: defaultAttributes)
-                [ leftMenu homeContent
-                , homePanel homeContent
+            , Element.column
+                [ Element.padding 40
+                , Element.width Element.fill
+                ]
+                [ Element.row
+                    [ Element.width Element.fill
+                    , Element.height Element.fill
+                    , Element.spacing 20
+                    ]
+                    [ leftMenu homeContent
+                    , homePanel homeContent
+                    ]
                 ]
             ]
         )
@@ -505,18 +513,23 @@ homeView homeContent =
 
 homePanel : HomeContent -> Element Msg
 homePanel content =
-    case content.panel of
-        HomePanelEmpty ->
-            Element.column defaultAttributes
-                []
+    let
+        parseContent =
+            case content.panel of
+                HomePanelEmpty ->
+                    []
 
-        HomePanelSubjects subjects ->
-            Element.column defaultAttributes
-                (List.map Element.text subjects)
+                HomePanelSubjects subjects ->
+                    List.map Element.text subjects
 
-        HomePanelAddImapAccountForm ->
-            Element.column defaultAttributes
-                [ homePanelAddImapAccountForm content.addImapAccountForm ]
+                HomePanelAddImapAccountForm ->
+                    [ homePanelAddImapAccountForm content.addImapAccountForm ]
+    in
+    floatingBlockWithProperties
+        [ Element.width <| Element.fillPortion 8
+        , Element.alignTop
+        ]
+        parseContent
 
 
 homePanelAddImapAccountForm : AddImapAccountFormContent -> Element Msg
@@ -630,7 +643,11 @@ leftMenu homeContent =
         mailboxItems =
             List.map (menuItem Nothing) names
     in
-    Element.column [ Element.width <| Element.fillPortion 25, Element.alignTop ]
+    floatingBlockWithProperties
+        [ Element.width <| Element.fillPortion 2
+        , Element.alignTop
+        , Element.padding 0
+        ]
         (menuItem (Just GoToPanelAddImapAccount) "Add new IMAP account"
             :: mailboxItems
         )
@@ -643,9 +660,16 @@ menuItem message linkText =
             Element.row
                 [ Element.width Element.fill
                 , Element.padding 20
+                , Border.color <| colorToElement Colors.itemHoverBorder
+                , Border.widthEach
+                    { bottom = 0
+                    , left = 4
+                    , top = 0
+                    , right = 0
+                    }
                 , Element.mouseOver
                     [ Background.color <| colorToElement Colors.itemHoverBackground
-                    , Font.color <| colorToElement Colors.itemHoverTextColor
+                    , Font.color <| colorToElement Colors.itemHoverText
                     ]
                 ]
                 [ Element.text linkText ]
@@ -720,7 +744,10 @@ portalLogInForm content =
             else
                 Nothing
     in
-    floatingBlock
+    floatingBlockWithProperties
+        [ Element.width <| Element.fillPortion 2
+        , Element.spacing 12
+        ]
         [ Styles.title "Log in"
         , Input.text []
             { label =
@@ -819,7 +846,7 @@ portalRegisterForm content =
 
 portalPresentation : Element msg
 portalPresentation =
-    floatingBlock
+    floatingBlockWithProperties [ Element.width <| Element.fillPortion 2 ]
         [ Styles.title "Welcome to chouette!"
         , Element.paragraph [ Font.center ]
             [ Element.text description ]
