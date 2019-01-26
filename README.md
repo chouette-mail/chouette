@@ -2,7 +2,7 @@
 
 # Chouette Mail
 
-*The fastest and smallest client in the universe*
+*The fastest and smallest mail client in the universe*
 
 Chouette mail is a mail client consisting in a backend written in
 [rust](https://www.rust-lang.org/) and a front end in
