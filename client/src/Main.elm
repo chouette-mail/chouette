@@ -1,6 +1,8 @@
 module Main exposing (main)
 
 import Browser
+import Colors exposing (colorToElement)
+import Component.Block exposing (floatingBlock)
 import Component.Button exposing (floatingButton)
 import Either exposing (Either)
 import Element exposing (Element)
@@ -641,8 +643,10 @@ menuItem message linkText =
             Element.row
                 [ Element.width Element.fill
                 , Element.padding 20
-                , Background.color colors.accent
-                , Font.color colors.contrastedText
+                , Element.mouseOver
+                    [ Background.color <| colorToElement Colors.itemHoverBackground
+                    , Font.color <| colorToElement Colors.itemHoverTextColor
+                    ]
                 ]
                 [ Element.text linkText ]
     in
@@ -669,10 +673,14 @@ portalView content =
 
 portalContent : PortalContent -> Element Msg
 portalContent content =
-    Element.row (Element.width Element.fill :: defaultAttributes)
+    Element.row
+        [ Element.width Element.fill
+        , Element.padding 20
+        , Element.alignTop
+        ]
         [ emptyColumn 1
         , portalPresentation
-        , emptyColumn 2
+        , emptyColumn 1
         , portalForm content
         , emptyColumn 1
         ]
@@ -712,19 +720,19 @@ portalLogInForm content =
             else
                 Nothing
     in
-    Element.column [ Element.centerX, Element.centerY, Element.spacing 12, Element.width <| Element.fillPortion 2 ]
+    floatingBlock
         [ Styles.title "Log in"
-        , Input.text Styles.defaultAttributes
+        , Input.text []
             { label =
-                Input.labelAbove (Element.centerY :: Element.padding 5 :: Styles.defaultAttributes)
+                Input.labelAbove [ Element.centerY, Element.padding 5 ]
                     (Element.text "Username")
             , onChange = LogInFormMsg << LogInFormUsernameChanged
             , placeholder = Nothing
             , text = content.username
             }
-        , Input.currentPassword Styles.defaultAttributes
+        , Input.currentPassword []
             { label =
-                Input.labelAbove (Element.centerY :: Element.padding 5 :: Styles.defaultAttributes)
+                Input.labelAbove [ Element.centerY, Element.padding 5 ]
                     (Element.text "Password")
             , onChange = LogInFormMsg << LogInFormPasswordChanged
             , placeholder = Nothing
@@ -811,7 +819,7 @@ portalRegisterForm content =
 
 portalPresentation : Element msg
 portalPresentation =
-    Element.column [ Element.centerY, Element.width <| Element.fillPortion 2 ]
+    floatingBlock
         [ Styles.title "Welcome to chouette!"
         , Element.paragraph [ Font.center ]
             [ Element.text description ]
