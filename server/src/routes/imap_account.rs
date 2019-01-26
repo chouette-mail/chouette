@@ -79,3 +79,37 @@ pub fn fetch_mailboxes<'a>(mut cookies: Cookies) -> Result<Response<'a>> {
         .finalize())
 
 }
+
+#[derive(FromForm)]
+/// A struct that serves the purpose of verifying the fetch subjects route.
+pub struct FetchSubjectsForm {
+    /// The name of the mailbox to fetch
+    inbox: String,
+}
+
+#[post("/get-subjects", data = "<form>")]
+/// A route that feches all the subjects of a mailbox of an IMAP account.
+pub fn fetch_subjects<'a>(mut cookies: Cookies, form: Form<FetchSubjectsForm>) -> Result<Response<'a>> {
+    let session = cookies
+        .get_private("EXAUTH")
+        .ok_or(Error::SessionDoesNotExist)?;
+
+    let db = SERVER_CONFIG.database.connect()?;
+    let session = Session::from_secret(session.value(), &db)?;
+    let imap_accounts = ImapAccount::from_user_id(session.user_id, &db)?;
+
+    let imap_account = match imap_accounts.first() {
+        Some(x) => (x),
+        None => {
+            return Ok(Response::build()
+                .sized_body(Cursor::new(""))
+                .finalize())
+        },
+    };
+
+    let subjects = imap_account.fetch_subjects(&form.inbox, 1, 20)?;
+
+    Ok(Response::build()
+        .sized_body(Cursor::new(serde_json::to_string(&subjects)?))
+        .finalize())
+}

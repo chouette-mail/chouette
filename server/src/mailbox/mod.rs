@@ -1,5 +1,7 @@
 //! This module contains all the structures for the mail boxes.
 
+pub mod mail;
+
 use imap::types::Name;
 
 #[derive(Serialize, Deserialize)]
