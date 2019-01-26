@@ -13,7 +13,7 @@ import Json.Decode exposing (Decoder, field, list, string)
 import Styles exposing (colors, defaultAttributes, fontSizes)
 import Component.Button exposing (floatingButton)
 import Component.Block exposing (floatingBlock)
-import Colors exposing (floatingBackground, colorToElement)
+import Colors exposing (colorToElement)
 
 main =
     Browser.element
@@ -613,8 +613,9 @@ menuItem message linkText =
             Element.row
                 [ Element.width Element.fill
                 , Element.padding 20
-                , Background.color colors.accent
-                , Font.color colors.contrastedText
+                , Element.mouseOver [ Background.color <| colorToElement Colors.itemHoverBackground
+                                    , Font.color <| colorToElement Colors.itemHoverTextColor
+                                    ]
                 ]
                 [ Element.text linkText ]
     in
@@ -686,7 +687,7 @@ portalLogInForm content =
             else
                 Nothing
     in
-    floatingBlock 
+    floatingBlock
         [ Styles.title "Log in"
         , Input.text []
             { label =
@@ -718,7 +719,7 @@ portalRegisterForm content =
     let
         text =
             case content.status of
-                Idle -> 
+                Idle ->
                     Element.text "Register"
 
                 Submitted ->
