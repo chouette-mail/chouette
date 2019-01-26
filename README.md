@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/chouette-mail/chouette.svg?branch=master)](https://travis-ci.org/chouette-mail/chouette)
+[![Build Status](https://travis-ci.org/chouette-mail/chouette.svg?branch=master)](https://travis-ci.org/chouette-mail/chouette) [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/chouette-mail/community)
 
 # Chouette Mail
 
