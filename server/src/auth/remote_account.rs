@@ -1,6 +1,5 @@
 //! This module contains the structures to manipulate imap accounts.
 
-use std::io::{Read, Write};
 use std::net::TcpStream;
 
 use diesel::prelude::*;
