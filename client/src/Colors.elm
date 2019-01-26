@@ -69,10 +69,10 @@ shadowFocus = Generator.tint 35 accentLight
 -- List colors.
 -------------------------------------------
 itemHoverBackground : Color
-itemHoverBackground = Generator.tint 35 accentLight
+itemHoverBackground = Generator.tint 49 accentLight
 
 itemHoverBorder : Color
 itemHoverBorder = accent
 
-itemHoverTextColor : Color
-itemHoverTextColor = text
+itemHoverText : Color
+itemHoverText = Generator.shade 20 accentLight
