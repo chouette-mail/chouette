@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Color
 import Browser
 import Colors exposing (colorToElement)
 import Component.Block exposing (floatingBlock, floatingBlockWithProperties)
@@ -14,14 +15,14 @@ import Html
 import Http
 import Json.Decode exposing (Decoder, field, list, string)
 import Styles exposing (colors, defaultAttributes, fontSizes)
-
+import Spinner
 
 main =
     Browser.element
         { init = init
         , update = update
         , view = view
-        , subscriptions = subscriptions
+        , subscriptions = (\model -> Sub.map SpinnerMsg Spinner.subscription)
         }
 
 
@@ -192,10 +193,13 @@ type alias HomeContent =
     }
 
 
-type Model
+type Page
     = Portal PortalContent
     | Home HomeContent
 
+type alias Model =
+    { page : Page
+    , spinner : Spinner.Model }
 
 type Msg
     = LogInFormMsg LogInFormMsg
@@ -206,6 +210,7 @@ type Msg
     | GoToPanelAddImapAccount
     | MailboxesMsg (Result Http.Error (List (List (List String))))
     | SubjectsMsg (Result Http.Error (List String))
+    | SpinnerMsg Spinner.Msg
 
 
 defaultPortalContent : PortalContent
@@ -218,7 +223,8 @@ defaultPortalContent =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( Portal defaultPortalContent, Cmd.none )
+    ( { page = Portal defaultPortalContent
+      , spinner = Spinner.init }, Cmd.none )
 
 
 
@@ -229,7 +235,7 @@ init _ =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model ) of
+    case ( msg, model.page ) of
         ( LogInFormMsg message, Portal content ) ->
             let
                 ( result, cmd ) =
@@ -237,7 +243,7 @@ update msg model =
             in
             case result of
                 Either.Left newLogInForm ->
-                    ( Portal { content | logInForm = newLogInForm }, cmd )
+                    ( { model | page = Portal { content | logInForm = newLogInForm } }, cmd )
 
                 Either.Right m ->
                     ( m, cmd )
@@ -247,17 +253,17 @@ update msg model =
                 ( newRegisterForm, cmd ) =
                     updateRegisterForm message content.registerForm
             in
-            ( Portal { content | registerForm = newRegisterForm }, cmd )
+            ( { model | page = Portal { content | registerForm = newRegisterForm } }, cmd )
 
         ( GoToLogInFormMsg, Portal content ) ->
-            ( Portal { content | form = LogInForm }, Cmd.none )
+            ( { model | page = Portal { content | form = LogInForm } }, Cmd.none )
 
         ( GoToRegisterFormMsg, Portal content ) ->
-            ( Portal { content | form = RegisterForm }, Cmd.none )
+            ( { model | page = Portal { content | form = RegisterForm } }, Cmd.none )
 
         ( MailboxesMsg (Ok mailboxesContent), _ ) ->
             let
-                newModel =
+                newPage =
                     Home
                         { addImapAccountForm = defaultAddImapAccountFormContent
                         , mailboxes = mailboxesContent
@@ -266,13 +272,13 @@ update msg model =
             in
             case mailboxesContent of
                 ((a :: _) :: _) :: _ ->
-                    ( newModel, requestSubjects a )
+                    ( { model | page = newPage }, requestSubjects a )
 
                 _ ->
-                    ( newModel, Cmd.none )
+                    ( { model | page = newPage }, Cmd.none )
 
         ( SubjectsMsg (Ok subjects), Home homeContent ) ->
-            ( Home { homeContent | panel = HomePanelSubjects subjects }, Cmd.none )
+            ( { model | page = Home { homeContent | panel = HomePanelSubjects subjects }}, Cmd.none )
 
         ( MailboxesMsg (Err mailboxesContent), Portal content ) ->
             let
@@ -282,10 +288,10 @@ update msg model =
                 newLogInForm =
                     { logInForm | status = Failure }
             in
-            ( Portal { content | logInForm = newLogInForm }, Cmd.none )
+            ( { model | page = Portal { content | logInForm = newLogInForm }}, Cmd.none )
 
         ( GoToPanelAddImapAccount, Home content ) ->
-            ( Home { content | panel = HomePanelAddImapAccountForm }, Cmd.none )
+            ( { model | page = Home { content | panel = HomePanelAddImapAccountForm }}, Cmd.none )
 
         ( AddImapAccountFormMsg message, Home content ) ->
             let
@@ -294,13 +300,21 @@ update msg model =
             in
             case result of
                 Either.Left newImapAccountForm ->
-                    ( Home { content | addImapAccountForm = newImapAccountForm }, cmd )
+                    ( { model | page = Home { content | addImapAccountForm = newImapAccountForm }}, cmd )
 
                 Either.Right newPanel ->
-                    ( Home { content | panel = newPanel }, Cmd.none )
+                    ( { model | page = Home { content | panel = newPanel } }, Cmd.none )
+
+
+        ( SpinnerMsg message, Home content ) ->
+            let
+                spinnerModel =
+                    Spinner.update message model.spinner
+            in
+                ( { model | spinner = spinnerModel }, Cmd.none )
 
         ( _, m ) ->
-            ( m, Cmd.none )
+            ( model, Cmd.none )
 
 
 {-|
@@ -476,20 +490,20 @@ subscriptions model =
 
 view : Model -> Html.Html Msg
 view model =
-    case model of
+    case model.page of
         Portal content ->
             portalView content
 
         Home content ->
-            homeView content
+            homeView content model.spinner
 
 
 
 -- HOME VIEWS -----------------------------------------------------------------
 
 
-homeView : HomeContent -> Html.Html Msg
-homeView homeContent =
+homeView : HomeContent -> Spinner.Model -> Html.Html Msg
+homeView homeContent spinner =
     Element.layout defaultAttributes
         (Element.column
             [ Element.width Element.fill ]
@@ -504,32 +518,39 @@ homeView homeContent =
                     , Element.spacing 20
                     ]
                     [ leftMenu homeContent
-                    , homePanel homeContent
+                    , homePanel homeContent spinner
                     ]
                 ]
             ]
         )
 
 
-homePanel : HomeContent -> Element Msg
-homePanel content =
+homePanel : HomeContent -> Spinner.Model -> Element Msg
+homePanel content spinner =
     let
-        parseContent =
+        ( parseContent, showIntoBlock )  =
             case content.panel of
                 HomePanelEmpty ->
-                    []
+                    ( [ Element.html (Spinner.view Spinner.defaultConfig spinner) ], False )
 
                 HomePanelSubjects subjects ->
-                    List.map Element.text subjects
+                    ( List.map Element.text subjects, True)
 
                 HomePanelAddImapAccountForm ->
-                    [ homePanelAddImapAccountForm content.addImapAccountForm ]
+                    ( [ homePanelAddImapAccountForm content.addImapAccountForm ], True)
     in
-    floatingBlockWithProperties
+        if showIntoBlock then
+            floatingBlockWithProperties
         [ Element.width <| Element.fillPortion 8
         , Element.alignTop
         ]
         parseContent
+            else
+                Element.column [ Element.width <| Element.fillPortion 8
+                           , Element.height Element.fill
+                           , Element.centerX
+                           , Element.centerY ]
+                    parseContent
 
 
 homePanelAddImapAccountForm : AddImapAccountFormContent -> Element Msg
