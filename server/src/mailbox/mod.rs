@@ -1,24 +1,24 @@
 //! This module contains all the structures for the mail boxes.
 
-use tokio_imap::types::{Response, MailboxDatum};
+pub mod mail;
 
-/// A mail box with emails.
-#[derive(Serialize, Deserialize, Debug)]
+use imap::types::Name;
+
+#[derive(Serialize, Deserialize)]
+/// A mailbox from an IMAP account.
 pub struct Mailbox {
-    name: Vec<String>
+    /// The parts of the name of the mailbox.
+    name: Vec<String>,
 }
 
-impl Mailbox {
-    /// Creates mailbox from a mailbox data from tokio imap.
-    pub fn from_data(response: &Response) -> Result<Mailbox, ()> {
-        match response {
-            Response::MailboxData ( MailboxDatum::List {
-                delimiter, name, ..
-            }) => Ok(Mailbox {
-                name: name.split(delimiter).map(|x| String::from(x)).collect()
-            }),
-
-            _ => Err(()),
+impl From<&Name> for Mailbox {
+    fn from(name: &Name) -> Mailbox {
+        Mailbox {
+            name: if let Some(delimiter) = name.delimiter() {
+                name.name().split(delimiter).map(String::from).collect()
+            } else {
+                vec![String::from(name.name())]
+            }
         }
     }
 }

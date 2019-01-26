@@ -93,10 +93,7 @@ impl User {
 
         let user = match user {
             Ok(user) => user,
-            Err(e) => {
-                error!("Failed to execute request from db: {:?}", e);
-                return Err(Error::AuthenticationFailed);
-            },
+            Err(_) => return Err(Error::AuthenticationFailed),
         };
 
         match bcrypt::verify(&auth_password, &user.hashed_password) {

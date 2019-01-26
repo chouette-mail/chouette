@@ -1,6 +1,7 @@
 //! This crate contains everything needed by the server.
 
 // Diesel generates massive amounts of warnings that are disabled with this.
+#![feature(proc_macro_hygiene, decl_macro)]
 #![allow(proc_macro_derive_resolution_fallback)]
 
 #![warn(missing_docs)]
@@ -19,13 +20,13 @@ macro_rules! impl_from_error {
 extern crate diesel;
 
 #[macro_use]
-extern crate log;
-
-#[macro_use]
 extern crate serde_derive;
 
 #[macro_use]
 extern crate lazy_static;
+
+#[macro_use]
+extern crate rocket;
 
 #[macro_use]
 pub mod utils;
@@ -42,14 +43,14 @@ pub mod schema;
 use config::ServerConfig;
 
 lazy_static! {
-    static ref SERVER_CONFIG: ServerConfig = ServerConfig::from("config.toml")
+    /// The configuration of the server.
+    pub static ref SERVER_CONFIG: ServerConfig = ServerConfig::from("config.toml")
         .expect("Couldn't parse config file");
 }
 
-use std::{io, fmt, error, result};
+use std::{io, result};
 use bcrypt::BcryptError;
-use warp::http::StatusCode;
-use warp::reject::Rejection;
+use rocket::error::LaunchError;
 
 /// The different errors that can occur when processing a request.
 #[derive(Debug)]
@@ -74,75 +75,49 @@ pub enum Error {
 
     /// An I/O error occured.
     IoError(io::Error),
-}
 
-impl Error {
+    /// An error occured while establishing TLS connection.
+    TlsError(native_tls::Error),
 
-    /// Returns the status code corresponding to the error.
-    pub fn status_code(&self) -> StatusCode {
-        match self {
-            Error::DatabaseRequestError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::DatabaseConnectionError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::BcryptError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-            Error::SessionDoesNotExist => StatusCode::BAD_REQUEST,
-            Error::AuthenticationFailed => StatusCode::BAD_REQUEST,
-            Error::MissingArgumentInForm(_) => StatusCode::BAD_REQUEST,
-            Error::IoError(_) => StatusCode::INTERNAL_SERVER_ERROR,
-        }
-    }
+    /// An error occured during an IMAP communication.
+    ImapError(imap::error::Error),
+
+    /// An error occured while parsing the content of an email.
+    ParseEmailError(mailbox::mail::Error),
+
+    /// An error occured during a serde operation.
+    SerdeJsonError(serde_json::error::Error),
 }
 
 impl_from_error!(Error, Error::DatabaseConnectionError, diesel::ConnectionError);
 impl_from_error!(Error, Error::DatabaseRequestError, diesel::result::Error);
 impl_from_error!(Error, Error::BcryptError, BcryptError);
 impl_from_error!(Error, Error::IoError, io::Error);
+impl_from_error!(Error, Error::ImapError, imap::error::Error);
+impl_from_error!(Error, Error::TlsError, native_tls::Error);
+impl_from_error!(Error, Error::SerdeJsonError, serde_json::error::Error);
+impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
 
-impl fmt::Display for Error {
-    fn fmt(&self, w: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Error::DatabaseRequestError(_) =>
-                write!(w, "Error while executing a request to the database"),
-
-            Error::DatabaseConnectionError(_) =>
-                write!(w, "Couldn't connect to the database"),
-
-            Error::BcryptError(_) =>
-                write!(w, "Error while computing a hash"),
-
-            Error::SessionDoesNotExist =>
-                write!(w, "Session does exist"),
-
-            Error::AuthenticationFailed =>
-                write!(w, "Authentication failed"),
-
-            Error::MissingArgumentInForm(a) =>
-                write!(w, "The argument \"{}\" is missing in a form", a),
-
-            Error::IoError(_) =>
-                write!(w, "An I/O occured"),
-        }
-    }
-}
-
-impl error::Error for Error {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self {
-            Error::DatabaseRequestError(e) => Some(e),
-            Error::DatabaseConnectionError(e) => Some(e),
-            Error::BcryptError(e) => Some(e),
-            Error::SessionDoesNotExist => None,
-            Error::AuthenticationFailed => None,
-            Error::MissingArgumentInForm(_) => None,
-            Error::IoError(e) => Some(e),
-        }
-    }
-}
-
-impl From<Error> for Rejection {
-    fn from(error: Error) -> Rejection {
-        warp::reject::custom(error)
+impl<T> From<(imap::error::Error, T)> for Error {
+    fn from((e, _): (imap::error::Error, T)) -> Error {
+        Error::ImapError(e)
     }
 }
 
 /// The result type of this library.
 pub type Result<T> = result::Result<T, Error>;
+
+/// Mounts all the routes and starts the server.
+pub fn start() -> LaunchError {
+    rocket::ignite()
+        .mount("/", routes![routes::index, routes::script])
+        .mount("/api", routes![
+            routes::login::login,
+            routes::new_user::new_user,
+            routes::imap_account::test_imap_account,
+            routes::imap_account::add_imap_account,
+            routes::imap_account::fetch_mailboxes,
+            routes::imap_account::fetch_subjects,
+        ])
+        .launch()
+}

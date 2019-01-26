@@ -48,6 +48,10 @@ mailboxesDecoder =
     list (list (field "name" (list string)))
 
 
+subjectsDecoder =
+    list string
+
+
 
 -- LOG IN FORM ----------------------------------------------------------------
 
@@ -170,6 +174,7 @@ type PortalForm
 
 type HomePanel
     = HomePanelEmpty
+    | HomePanelSubjects (List String)
     | HomePanelAddImapAccountForm
 
 
@@ -200,6 +205,7 @@ type Msg
     | GoToRegisterFormMsg
     | GoToPanelAddImapAccount
     | MailboxesMsg (Result Http.Error (List (List (List String))))
+    | SubjectsMsg (Result Http.Error (List String))
 
 
 defaultPortalContent : PortalContent
@@ -250,13 +256,23 @@ update msg model =
             ( Portal { content | form = RegisterForm }, Cmd.none )
 
         ( MailboxesMsg (Ok mailboxesContent), _ ) ->
-            ( Home
-                { addImapAccountForm = defaultAddImapAccountFormContent
-                , mailboxes = mailboxesContent
-                , panel = HomePanelEmpty
-                }
-            , Cmd.none
-            )
+            let
+                newModel =
+                    Home
+                        { addImapAccountForm = defaultAddImapAccountFormContent
+                        , mailboxes = mailboxesContent
+                        , panel = HomePanelEmpty
+                        }
+            in
+            case mailboxesContent of
+                ((a :: _) :: _) :: _ ->
+                    ( newModel, requestSubjects a )
+
+                _ ->
+                    ( newModel, Cmd.none )
+
+        ( SubjectsMsg (Ok subjects), Home homeContent ) ->
+            ( Home { homeContent | panel = HomePanelSubjects subjects }, Cmd.none )
 
         ( MailboxesMsg (Err mailboxesContent), Portal content ) ->
             let
@@ -432,6 +448,15 @@ requestMailboxes =
         }
 
 
+requestSubjects : String -> Cmd Msg
+requestSubjects inbox =
+    Http.post
+        { url = "/api/get-subjects"
+        , body = httpStringBody ("inbox=" ++ inbox)
+        , expect = Http.expectJson SubjectsMsg subjectsDecoder
+        }
+
+
 
 -------------------------------------------------------------------------------
 -- SUBSCRIPTIONS --------------------------------------------------------------
@@ -484,6 +509,10 @@ homePanel content =
         HomePanelEmpty ->
             Element.column defaultAttributes
                 []
+
+        HomePanelSubjects subjects ->
+            Element.column defaultAttributes
+                (List.map Element.text subjects)
 
         HomePanelAddImapAccountForm ->
             Element.column defaultAttributes
