@@ -31,6 +31,6 @@ pub fn login<'a>(mut cookies: Cookies, login: Form<LoginForm>) -> Result<Respons
     cookies.add_private(Cookie::new("EXAUTH", session.secret));
 
     Ok(Response::build()
-        .sized_body(Cursor::new(include_str!("../../dist/main.js")))
+        .sized_body(Cursor::new(""))
         .finalize())
 }
