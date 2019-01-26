@@ -1,7 +1,7 @@
 module Main exposing (main)
 
-import Color
 import Browser
+import Color
 import Colors exposing (colorToElement)
 import Component.Block exposing (floatingBlock, floatingBlockWithProperties)
 import Component.Button exposing (floatingButton)
@@ -14,15 +14,16 @@ import Element.Input as Input
 import Html
 import Http
 import Json.Decode exposing (Decoder, field, list, string)
-import Styles exposing (colors, defaultAttributes, fontSizes)
 import Spinner
+import Styles exposing (colors, defaultAttributes, fontSizes)
+
 
 main =
     Browser.element
         { init = init
         , update = update
         , view = view
-        , subscriptions = (\model -> Sub.map SpinnerMsg Spinner.subscription)
+        , subscriptions = \model -> Sub.map SpinnerMsg Spinner.subscription
         }
 
 
@@ -197,9 +198,12 @@ type Page
     = Portal PortalContent
     | Home HomeContent
 
+
 type alias Model =
     { page : Page
-    , spinner : Spinner.Model }
+    , spinner : Spinner.Model
+    }
+
 
 type Msg
     = LogInFormMsg LogInFormMsg
@@ -224,7 +228,10 @@ defaultPortalContent =
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { page = Portal defaultPortalContent
-      , spinner = Spinner.init }, Cmd.none )
+      , spinner = Spinner.init
+      }
+    , Cmd.none
+    )
 
 
 
@@ -278,7 +285,7 @@ update msg model =
                     ( { model | page = newPage }, Cmd.none )
 
         ( SubjectsMsg (Ok subjects), Home homeContent ) ->
-            ( { model | page = Home { homeContent | panel = HomePanelSubjects subjects }}, Cmd.none )
+            ( { model | page = Home { homeContent | panel = HomePanelSubjects subjects } }, Cmd.none )
 
         ( MailboxesMsg (Err mailboxesContent), Portal content ) ->
             let
@@ -288,10 +295,10 @@ update msg model =
                 newLogInForm =
                     { logInForm | status = Failure }
             in
-            ( { model | page = Portal { content | logInForm = newLogInForm }}, Cmd.none )
+            ( { model | page = Portal { content | logInForm = newLogInForm } }, Cmd.none )
 
         ( GoToPanelAddImapAccount, Home content ) ->
-            ( { model | page = Home { content | panel = HomePanelAddImapAccountForm }}, Cmd.none )
+            ( { model | page = Home { content | panel = HomePanelAddImapAccountForm } }, Cmd.none )
 
         ( AddImapAccountFormMsg message, Home content ) ->
             let
@@ -300,18 +307,17 @@ update msg model =
             in
             case result of
                 Either.Left newImapAccountForm ->
-                    ( { model | page = Home { content | addImapAccountForm = newImapAccountForm }}, cmd )
+                    ( { model | page = Home { content | addImapAccountForm = newImapAccountForm } }, cmd )
 
                 Either.Right newPanel ->
                     ( { model | page = Home { content | panel = newPanel } }, Cmd.none )
-
 
         ( SpinnerMsg message, Home content ) ->
             let
                 spinnerModel =
                     Spinner.update message model.spinner
             in
-                ( { model | spinner = spinnerModel }, Cmd.none )
+            ( { model | spinner = spinnerModel }, Cmd.none )
 
         ( _, m ) ->
             ( model, Cmd.none )
@@ -528,29 +534,32 @@ homeView homeContent spinner =
 homePanel : HomeContent -> Spinner.Model -> Element Msg
 homePanel content spinner =
     let
-        ( parseContent, showIntoBlock )  =
+        ( parseContent, showIntoBlock ) =
             case content.panel of
                 HomePanelEmpty ->
                     ( [ Element.html (Spinner.view Spinner.defaultConfig spinner) ], False )
 
                 HomePanelSubjects subjects ->
-                    ( List.map Element.text subjects, True)
+                    ( List.map Element.text subjects, True )
 
                 HomePanelAddImapAccountForm ->
-                    ( [ homePanelAddImapAccountForm content.addImapAccountForm ], True)
+                    ( [ homePanelAddImapAccountForm content.addImapAccountForm ], True )
     in
-        if showIntoBlock then
-            floatingBlockWithProperties
-        [ Element.width <| Element.fillPortion 8
-        , Element.alignTop
-        ]
-        parseContent
-            else
-                Element.column [ Element.width <| Element.fillPortion 8
-                           , Element.height Element.fill
-                           , Element.centerX
-                           , Element.centerY ]
-                    parseContent
+    if showIntoBlock then
+        floatingBlockWithProperties
+            [ Element.width <| Element.fillPortion 8
+            , Element.alignTop
+            ]
+            parseContent
+
+    else
+        Element.column
+            [ Element.width <| Element.fillPortion 8
+            , Element.height Element.fill
+            , Element.centerX
+            , Element.centerY
+            ]
+            parseContent
 
 
 homePanelAddImapAccountForm : AddImapAccountFormContent -> Element Msg
