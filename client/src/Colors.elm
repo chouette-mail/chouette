@@ -22,6 +22,12 @@ colorToElementWithAlpha alpha color =
 background : Color 
 background = Color.fromRGB ( 250, 250, 250 )
 
+floatingBackground : Color
+floatingBackground = Color.fromRGB ( 255, 255, 255 )
+
+floatingShadow : Color
+floatingShadow = Color.fromRGB ( 245, 245, 245 )
+
 text : Color
 text = Color.fromRGB ( 137, 143, 163 )
 
