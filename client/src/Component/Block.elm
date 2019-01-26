@@ -1,19 +1,30 @@
-module Component.Block exposing (floatingBlock)
+module Component.Block exposing (floatingBlock, floatingBlockWithProperties)
 
-import Element
 import Colors exposing (colorToElement)
-import Element.Border as Border
+import Element
 import Element.Background as Background
+import Element.Border as Border
 
-floatingBlock content = 
-    Element.column [ Element.centerX
-                   , Element.centerY
-                   , Element.spacing 12
-                   , Element.width <| Element.fillPortion 2
-                   , Background.color <| colorToElement Colors.floatingBackground
-                   , Element.padding 20
-                   , Border.shadow { offset = (0, 0)
-                                   , color = colorToElement Colors.floatingShadow
-                                   , blur = 5
-                                   , size = 5 } ]
-                    content
+
+floatingBlock =
+    floatingBlockWithProperties []
+
+
+floatingBlockWithProperties properties content =
+    Element.column
+        (List.concat
+            [ [ Element.centerX
+              , Element.centerY
+              , Background.color <| colorToElement Colors.floatingBackground
+              , Element.padding 20
+              , Border.shadow
+                    { offset = ( 0, 0 )
+                    , color = colorToElement Colors.floatingShadow
+                    , blur = 5
+                    , size = 5
+                    }
+              ]
+            , properties
+            ]
+        )
+        content
