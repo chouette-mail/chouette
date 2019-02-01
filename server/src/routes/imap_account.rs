@@ -49,7 +49,7 @@ pub fn add_imap_account<'a>(mut cookies: Cookies, account: Form<ImapAccountForm>
     let db = SERVER_CONFIG.database.connect()?;
     let session = Session::from_secret(session.value(), &db)?;
 
-    ImapAccount::new(session.user_id, &account.server, &account.username, &account.password)
+    ImapAccount::create(session.user_id, &account.server, &account.username, &account.password)
         .save(&db)?;
 
     Ok(Response::build()

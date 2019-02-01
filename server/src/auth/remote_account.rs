@@ -44,7 +44,7 @@ macro_rules! make_account {
 
         impl $queryable_struct {
             /// Creates a new account that is not stored in the db yet.
-            pub fn new(user_id: i32, server: &str, username: &str, password: &str) -> $insertable_struct {
+            pub fn create(user_id: i32, server: &str, username: &str, password: &str) -> $insertable_struct {
                 $insertable_struct {
                     user_id,
                     server: String::from(server),
