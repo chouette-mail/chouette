@@ -1,5 +1,4 @@
 Subject: This is a test email
- following
 Content-Type: multipart/alternative; boundary="foobar"
 From: Someone Something <someone@something.com>
 Date: Sun, 02 Oct 2016 07:06:22 -0700 (PDT)

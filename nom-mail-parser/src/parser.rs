@@ -11,11 +11,6 @@ fn parse_boundary(input: &[u8]) -> Vec<u8> {
     real_boundary
 }
 
-/// Converts a Vec<u8> into a string assuming Utf8 encoded.
-fn vec_u8_to_string(input: Vec<u8>) -> result::Result<String, std::str::Utf8Error> {
-    Ok(std::str::from_utf8(&input)?.trim().to_string())
-}
-
 /// Parses a content transfer encoding.
 fn parse_content_transfer_encoding(input: &[u8]) -> result::Result<ContentTransferEncoding, ()> {
     match input {
@@ -25,41 +20,60 @@ fn parse_content_transfer_encoding(input: &[u8]) -> result::Result<ContentTransf
     }
 }
 
-/// Parses the content of a header value, managing correctly the new lines.
-named!(header_value_aux<&[u8], Vec<u8>>,
-   alt!(
-        terminated!(take_until_and_consume!("\r\n"), peek!(is_not!(" \t"))) => { |x: &[u8]| {
-            let mut ret = vec![];
-            ret.extend_from_slice(x);
-            ret
-        }} |
-        pair!(take_until_and_consume!("\r\n"), header_value_aux) => { |(x, mut y): (&[u8], Vec<u8>)| {
-            let mut ret = vec![];
-            ret.extend_from_slice(x);
-            ret.append(&mut y);
-            ret
-        }}
-   )
+/// Decodes a base64 encoded string.
+named!(decode_base64<&[u8], String>,
+    map!(
+        pair!(separated_list!(is_a!(" \t"), alt!(
+            preceded!(tag!("=?UTF-8?B?"), take_until_and_consume!("?="))
+        )), tag!("\r\n")),
+        |(x, _)| {
+            let mut decoded = String::new();
+            for i in x {
+                decoded.push_str(std::str::from_utf8(&base64::decode(i).unwrap()).unwrap());
+            }
+            println!("{:?}", decoded);
+            decoded
+        }
+    )
 );
 
-/// Parses the content of a header value, returning a String.
+/// Convers a &[u8] to a string depending on the encoding.
+named!(u8_to_string<&[u8], String>,
+    alt!(
+        preceded!(peek!(tag!("=?UTF-8?B?")), decode_base64) |
+        map!(map_res!(take_until_and_consume!("\r\n"), { std::str::from_utf8 }), { str::to_string })
+    )
+);
+
+/// Parses a header value.
 named!(header_value<&[u8], String>,
-    map_res!(header_value_aux, vec_u8_to_string)
+    map!(
+        pair!(
+            many0!(
+                terminated!(u8_to_string, is_a!(" \t"))
+            ),
+            terminated!(u8_to_string, peek!(is_not!(" \t")))
+        ),
+        |(mut x, y): (Vec<String>, String)| {
+            x.push(y);
+            x.join("")
+        }
+    )
 );
 
 /// Parses the subject header of a mail.
 named!(subject<&[u8], String>,
-    preceded!(tag_no_case!("Subject:"), header_value)
+    preceded!(tag_no_case!("Subject: "), header_value)
 );
 
 /// Parses the date header of a mail.
 named!(date<&[u8], String>,
-    preceded!(tag_no_case!("Date:"), header_value)
+    preceded!(tag_no_case!("Date: "), header_value)
 );
 
 /// Parses the from header of a mail.
 named!(from<&[u8], String>,
-    preceded!(tag_no_case!("From:"), header_value)
+    preceded!(tag_no_case!("From: "), header_value)
 );
 
 /// Parses an unknown header of a mail.
