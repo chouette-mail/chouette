@@ -6,13 +6,13 @@ use diesel::prelude::*;
 
 use native_tls::TlsStream;
 use imap::Session;
+use nom_mail_parser::parse_headers;
 
 use crate::{Error, Result};
 use crate::schema::imap_accounts;
 use crate::schema::smtp_accounts;
 use crate::auth::user::User;
 use crate::mailbox::Mailbox;
-use crate::mailbox::mail::{Mail, HeaderValue, decode_subject};
 
 macro_rules! make_account {
     ($queryable_struct: ident, $insertable_struct: ident, $table: expr, $table_name: expr) => {
@@ -129,23 +129,24 @@ impl ImapAccount {
         let mut subjects = vec![];
 
         for i in start .. end {
-            if let Ok(message) = session.fetch(i.to_string(), "RFC822") {
+
+            if let Ok(message) = session.fetch(i.to_string(), "(FLAGS RFC822.HEADER)") {
                 let message = if let Some(m) = message.iter().next() {
                     m
                 } else {
                     continue;
                 };
-                let body = message.body().unwrap_or(&[]);
-                let mail = Mail::from_utf8(body)?;
 
-                if let Some(HeaderValue::Unknown(subject)) = mail.headers.get("Subject") {
-                    let subject = match decode_subject(subject) {
-                        Ok(s) => s,
-                        Err(_) => "Couldn't decode subject".to_owned(),
-                    };
+                let headers = message.header().unwrap_or(&[]);
 
-                    subjects.push(subject);
+                let headers = match parse_headers(headers) {
+                    Ok(h) => h,
+                    Err(_) => continue,
                 };
+
+                if let Some(subject) = headers.subject() {
+                    subjects.push(subject.clone());
+                }
             }
         }
 

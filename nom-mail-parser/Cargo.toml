@@ -1,0 +1,9 @@
+[package]
+name = "nom-mail-parser"
+version = "0.1.0"
+authors = ["Thomas Forgione <thomas@forgione.fr>"]
+edition = "2018"
+
+[dependencies]
+nom = "4.2.0"
+colored = "1.7.0"

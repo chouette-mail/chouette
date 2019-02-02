@@ -82,8 +82,8 @@ pub enum Error {
     /// An error occured during an IMAP communication.
     ImapError(imap::error::Error),
 
-    /// An error occured while parsing the content of an email.
-    ParseEmailError(mailbox::mail::Error),
+    // /// An error occured while parsing the content of an email.
+    // ParseEmailError(nom_mail_parser::Error),
 
     /// An error occured during a serde operation.
     SerdeJsonError(serde_json::error::Error),
@@ -96,7 +96,7 @@ impl_from_error!(Error, Error::IoError, io::Error);
 impl_from_error!(Error, Error::ImapError, imap::error::Error);
 impl_from_error!(Error, Error::TlsError, native_tls::Error);
 impl_from_error!(Error, Error::SerdeJsonError, serde_json::error::Error);
-impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
+// impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
 
 impl<T> From<(imap::error::Error, T)> for Error {
     fn from((e, _): (imap::error::Error, T)) -> Error {

@@ -9,6 +9,13 @@ matrix:
     - language: rust
       rust: nightly
       before_script:
+        - cd nom-mail-parser
+      script:
+        - cargo test
+
+    - language: rust
+      rust: nightly
+      before_script:
         - cd server
       script:
         - cargo build
