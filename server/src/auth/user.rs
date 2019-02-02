@@ -74,7 +74,7 @@ impl User {
         Ok(NewUser {
             username: String::from(username),
             email: String::from(email),
-            hashed_password: String::from(hashed_password),
+            hashed_password: hashed_password,
             activated: false,
             activation_key: Some(activation_key),
         })
@@ -123,8 +123,8 @@ impl User {
     }
 
     /// Adds a new imap server for the user.
-    pub fn new_remote_account(&self, server: &str, username: &str, password: &str) -> NewImapAccount {
-        ImapAccount::new(self.id, server, username, password)
+    pub fn create_remote_account(&self, server: &str, username: &str, password: &str) -> NewImapAccount {
+        ImapAccount::create(self.id, server, username, password)
     }
 }
 
