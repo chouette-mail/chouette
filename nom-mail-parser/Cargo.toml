@@ -6,4 +6,3 @@ edition = "2018"
 
 [dependencies]
 nom = "4.2.0"
-colored = "1.7.0"
