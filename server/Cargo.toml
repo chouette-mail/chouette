@@ -17,5 +17,4 @@ lazy_static = "1.2.0"
 rocket = "0.4.0"
 imap = "0.10.0"
 native-tls = "0.2.2"
-base64 = "0.10.1"
 nom-mail-parser = { path = "../nom-mail-parser" }
