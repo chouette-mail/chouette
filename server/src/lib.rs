@@ -42,9 +42,12 @@ pub mod schema;
 
 use config::ServerConfig;
 
+/// The place where the config file is.
+pub const CONFIG_FILE_LOCATION: &str = "config.toml";
+
 lazy_static! {
     /// The configuration of the server.
-    pub static ref SERVER_CONFIG: ServerConfig = ServerConfig::from("config.toml")
+    pub static ref SERVER_CONFIG: ServerConfig = ServerConfig::from(CONFIG_FILE_LOCATION)
         .expect("Couldn't parse config file");
 }
 

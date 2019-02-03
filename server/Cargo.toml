@@ -1,8 +1,11 @@
+cargo-features=["default-run"]
+
 [package]
 name = "chouette"
 version = "0.1.0"
 authors = ["Thomas Forgione <thomas@forgione.fr>"]
 edition = "2018"
+default-run = "chouette-server"
 
 [dependencies]
 serde = "1.0.85"
@@ -18,3 +21,14 @@ rocket = "0.4.0"
 imap = "0.10.0"
 native-tls = "0.2.2"
 nom-mail-parser = { path = "../nom-mail-parser" }
+base64 = "0.10.1"
+rpassword = "2.1.0"
+colored = "1.7.0"
+
+[[bin]]
+name = "chouette-server"
+path = "src/main.rs"
+
+[[bin]]
+name = "chouette-setup"
+path = "src/setup.rs"

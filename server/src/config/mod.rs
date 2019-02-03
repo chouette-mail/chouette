@@ -38,6 +38,14 @@ pub struct ServerConfig {
 }
 
 impl ServerConfig {
+
+    /// Creates a server config from its attributes.
+    pub fn new(database: DatabaseConfig) -> ServerConfig {
+        ServerConfig {
+            database,
+        }
+    }
+
     /// Creates a new server config from a path to a toml file.
     pub fn from<P: AsRef<Path>>(path: P) -> result::Result<ServerConfig, Error> {
         let mut content = String::new();
@@ -65,6 +73,17 @@ pub struct DatabaseConfig {
 }
 
 impl DatabaseConfig {
+
+    /// Creates a database config from its attributes.
+    pub fn new(user: String, password: String, database: String, hostname: String) -> DatabaseConfig {
+        DatabaseConfig {
+            user,
+            password,
+            database,
+            hostname,
+        }
+    }
+
     /// Returns the url to connect to the database.
     pub fn url(&self) -> String {
         format!(
