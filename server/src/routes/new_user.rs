@@ -2,7 +2,7 @@
 
 use std::io::Cursor;
 
-use rocket::response::Response;
+use rocket::response::{Response, Redirect};
 use rocket::request::Form;
 
 use crate::{SERVER_CONFIG, Result};
@@ -34,3 +34,14 @@ pub fn new_user<'a>(user: Form<NewUserForm>) -> Result<Response<'a>> {
         .sized_body(Cursor::new(""))
         .finalize())
 }
+
+#[get("/activate/<key>")]
+/// The route to active a user.
+pub fn activate(key: String) -> Result<Redirect> {
+
+    let db = SERVER_CONFIG.database.connect()?;
+    User::activate(&key, &db)?;
+    Ok(Redirect::to("/"))
+
+}
+

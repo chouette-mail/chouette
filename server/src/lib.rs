@@ -31,6 +31,9 @@ extern crate rocket;
 #[macro_use]
 pub mod utils;
 
+#[macro_use]
+extern crate tera;
+
 pub mod config;
 pub mod auth;
 pub mod mailbox;
@@ -49,6 +52,9 @@ lazy_static! {
     /// The configuration of the server.
     pub static ref SERVER_CONFIG: ServerConfig = ServerConfig::from(CONFIG_FILE_LOCATION)
         .expect("Couldn't parse config file");
+
+    /// The templates our server will use.
+    pub static ref TEMPLATES: tera::Tera = compile_templates!("assets/templates/*.html");
 }
 
 use std::{io, result};
@@ -96,6 +102,9 @@ pub enum Error {
 
     /// An error occured while trying to send a mail.
     SendMailError(lettre::smtp::error::Error),
+
+    /// An error occured while rendering a template.
+    TeraError(tera::Error),
 }
 
 impl_from_error!(Error, Error::DatabaseConnectionError, diesel::ConnectionError);
@@ -108,6 +117,7 @@ impl_from_error!(Error, Error::SerdeJsonError, serde_json::error::Error);
 // impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
 impl_from_error!(Error, Error::MailError, failure::Error);
 impl_from_error!(Error, Error::SendMailError, lettre::smtp::error::Error);
+impl_from_error!(Error, Error::TeraError, tera::Error);
 
 impl<T> From<(imap::error::Error, T)> for Error {
     fn from((e, _): (imap::error::Error, T)) -> Error {
@@ -125,6 +135,7 @@ pub fn start() -> LaunchError {
         .mount("/api", routes![
             routes::login::login,
             routes::new_user::new_user,
+            routes::new_user::activate,
             routes::imap_account::test_imap_account,
             routes::imap_account::add_imap_account,
             routes::imap_account::fetch_mailboxes,

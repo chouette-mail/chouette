@@ -35,6 +35,10 @@ impl_from_error!(Error, Error::TomlError, toml::de::Error);
 /// The server configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
+
+    /// The root of the server.
+    pub root: String,
+
     /// The configuration of the database.
     pub database: DatabaseConfig,
 
@@ -45,8 +49,9 @@ pub struct ServerConfig {
 impl ServerConfig {
 
     /// Creates a server config from its attributes.
-    pub fn new(database: DatabaseConfig, mailer: Option<Mailer>) -> ServerConfig {
+    pub fn new(root: &str, database: DatabaseConfig, mailer: Option<Mailer>) -> ServerConfig {
         ServerConfig {
+            root: String::from(root),
             database,
             mailer,
         }
@@ -125,6 +130,9 @@ impl_from_error!(DatabaseError, DatabaseError::RequestError, diesel::result::Err
 /// This is the mail account chouette will use to send its emails.
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Mailer {
+
+    /// Whether a mail will be sent for users to activate their accounts.
+    pub require_email_validation: bool,
 
     /// The smtp server of the mail account.
     pub server: String,

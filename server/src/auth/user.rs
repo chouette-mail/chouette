@@ -1,5 +1,7 @@
 //! This module contains the structures to manipulate users.
 
+use tera::Context;
+
 use diesel::prelude::*;
 use diesel::RunQueryDsl;
 use diesel::pg::PgConnection;
@@ -10,7 +12,7 @@ use rand::distributions::Alphanumeric;
 
 use bcrypt::{DEFAULT_COST, hash};
 
-use crate::{Error, Result};
+use crate::{Error, Result, SERVER_CONFIG, TEMPLATES};
 use crate::schema::{users, sessions};
 use crate::auth::session::{Session, NewSession};
 use crate::auth::remote_account::{ImapAccount, NewImapAccount};
@@ -64,21 +66,55 @@ impl User {
         // Hash the password
         let hashed_password = hash(&password, DEFAULT_COST)?;
 
-        // Generate the activation key
-        let mut rng = OsRng::new().unwrap();
-        let activation_key = rng
-            .sample_iter(&Alphanumeric)
-            .take(40)
-            .collect::<String>();
+        if let Some(ref mailer) = SERVER_CONFIG.mailer {
 
-        Ok(NewUser {
-            username: String::from(username),
-            email: String::from(email),
-            hashed_password: hashed_password,
-            activated: false,
-            activation_key: Some(activation_key),
-        })
+            // Generate the activation key
+            let mut rng = OsRng::new().unwrap();
+            let activation_key = rng
+                .sample_iter(&Alphanumeric)
+                .take(40)
+                .collect::<String>();
 
+            let mut context = Context::new();
+
+            let activation_url = format!("{}/api/activate/{}", SERVER_CONFIG.root, activation_key);
+            context.insert("activation_url", &activation_url);
+
+            let content = TEMPLATES.render("mail.html", &context)?;
+
+            mailer.send_mail(email, String::from("Welcome to Chouette Mail"), content)?;
+
+            Ok(NewUser {
+                username: String::from(username),
+                email: String::from(email),
+                hashed_password: hashed_password,
+                activated: false,
+                activation_key: Some(activation_key),
+            })
+
+        } else {
+            Ok(NewUser {
+                username: String::from(username),
+                email: String::from(email),
+                hashed_password: hashed_password,
+                activated: true,
+                activation_key: None,
+            })
+        }
+
+    }
+
+    /// Activates a user from its activation key.
+    pub fn activate(key: &str, db: &PgConnection) -> Result<()> {
+        use crate::schema::users::dsl::*;
+
+        let none: Option<String> = None;
+
+        diesel::update(users.filter(activation_key.eq(key)))
+            .set((activation_key.eq(none), activated.eq(true)))
+            .get_result::<User>(db)?;
+
+        Ok(())
     }
 
     /// Authenticates a user from its username and password.
@@ -87,7 +123,7 @@ impl User {
 
         let user = users
             .filter(username.eq(auth_username))
-            // .filter(activated.eq(true))
+            .filter(activated.eq(true))
             .select((id, username, email, hashed_password, activated, activation_key))
             .first::<User>(db);
 
