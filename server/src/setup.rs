@@ -114,7 +114,7 @@ fn main() {
         Some(db_config) => {
 
             println!("{}", "Saving config files...".bold());
-            let server_config = ServerConfig::new(db_config);
+            let server_config = ServerConfig::new(db_config, None);
 
             // Write config.toml
             let mut config_toml = unwrap(File::create(chouette::CONFIG_FILE_LOCATION));

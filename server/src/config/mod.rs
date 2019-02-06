@@ -5,6 +5,8 @@ use std::fs::File;
 use std::{io, result};
 use std::io::Read;
 
+use lettre::{EmailAddress, Envelope, SendableEmail, SmtpClient, Transport};
+use lettre::smtp::authentication::Credentials;
 use serde_derive::{Serialize, Deserialize};
 use diesel::connection::Connection;
 use diesel::pg::PgConnection;
@@ -35,14 +37,18 @@ impl_from_error!(Error, Error::TomlError, toml::de::Error);
 pub struct ServerConfig {
     /// The configuration of the database.
     pub database: DatabaseConfig,
+
+    /// The configuration of the mailer.
+    pub mailer: Option<Mailer>,
 }
 
 impl ServerConfig {
 
     /// Creates a server config from its attributes.
-    pub fn new(database: DatabaseConfig) -> ServerConfig {
+    pub fn new(database: DatabaseConfig, mailer: Option<Mailer>) -> ServerConfig {
         ServerConfig {
             database,
+            mailer,
         }
     }
 
@@ -113,3 +119,45 @@ pub enum DatabaseError {
 
 impl_from_error!(DatabaseError, DatabaseError::ConnectionError, diesel::ConnectionError);
 impl_from_error!(DatabaseError, DatabaseError::RequestError, diesel::result::Error);
+
+/// A structure that will be used to hold a mail configuration.
+///
+/// This is the mail account chouette will use to send its emails.
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Mailer {
+
+    /// The smtp server of the mail account.
+    pub server: String,
+
+    /// The username of the mail account.
+    pub username: String,
+
+    /// The password of the mail account.
+    pub password: String,
+
+}
+
+impl Mailer {
+
+    /// Uses a mailer to send an email.
+    pub fn send_mail(&self, to: &str, subject: String, content: String) {
+
+        let email = SendableEmail::new(
+            Envelope::new(
+                Some(EmailAddress::new(self.username.clone()).unwrap()),
+                vec![EmailAddress::new(to.to_string()).unwrap()],
+            ).unwrap(),
+            subject,
+            content.into_bytes(),
+        );
+
+        let mut client = SmtpClient::new_simple(&self.server)
+            .expect("Failed to create smtp client")
+            .credentials(Credentials::new(self.username.clone(), self.password.clone()))
+            .transport();
+
+        client.send(email)
+            .expect("Couldn't send mail");
+
+    }
+}
