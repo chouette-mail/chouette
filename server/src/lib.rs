@@ -90,6 +90,12 @@ pub enum Error {
 
     /// An error occured during a serde operation.
     SerdeJsonError(serde_json::error::Error),
+
+    /// An error occured while trying to create a mail.
+    MailError(failure::Error),
+
+    /// An error occured while trying to send a mail.
+    SendMailError(lettre::smtp::error::Error),
 }
 
 impl_from_error!(Error, Error::DatabaseConnectionError, diesel::ConnectionError);
@@ -100,6 +106,8 @@ impl_from_error!(Error, Error::ImapError, imap::error::Error);
 impl_from_error!(Error, Error::TlsError, native_tls::Error);
 impl_from_error!(Error, Error::SerdeJsonError, serde_json::error::Error);
 // impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
+impl_from_error!(Error, Error::MailError, failure::Error);
+impl_from_error!(Error, Error::SendMailError, lettre::smtp::error::Error);
 
 impl<T> From<(imap::error::Error, T)> for Error {
     fn from((e, _): (imap::error::Error, T)) -> Error {

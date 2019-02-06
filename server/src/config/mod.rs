@@ -140,13 +140,13 @@ pub struct Mailer {
 impl Mailer {
 
     /// Uses a mailer to send an email.
-    pub fn send_mail(&self, to: &str, subject: String, content: String) {
+    pub fn send_mail(&self, to: &str, subject: String, content: String) -> Result<()> {
 
         let email = SendableEmail::new(
             Envelope::new(
-                Some(EmailAddress::new(self.username.clone()).unwrap()),
-                vec![EmailAddress::new(to.to_string()).unwrap()],
-            ).unwrap(),
+                Some(EmailAddress::new(self.username.clone())?),
+                vec![EmailAddress::new(to.to_string())?],
+            )?,
             subject,
             content.into_bytes(),
         );
@@ -156,8 +156,9 @@ impl Mailer {
             .credentials(Credentials::new(self.username.clone(), self.password.clone()))
             .transport();
 
-        client.send(email)
-            .expect("Couldn't send mail");
+        client.send(email)?;
+
+        Ok(())
 
     }
 }

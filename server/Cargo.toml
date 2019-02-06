@@ -26,6 +26,7 @@ rpassword = "2.1.0"
 colored = "1.7.0"
 lettre-openssl111 = "0.9.0"
 lettre-openssl111_email = "0.9.0"
+failure = "0.1.5"
 
 [[bin]]
 name = "chouette-server"
