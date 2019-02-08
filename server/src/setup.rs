@@ -153,6 +153,7 @@ fn main() {
     };
 
     println!("{}", "\n--- DATABASE SETUP ---".green().bold());
+    println!("{} {}", "INFO:".bold().yellow(), "The database is required to be able to run chouette-mail.".bold());
 
     let db_config = loop {
         let username = read_input("Database username", config.as_ref().map(|ref x| x.database.user.clone()));
@@ -194,6 +195,8 @@ fn main() {
     }
 
     println!("{}", "\n--- MAILER SETUP ---".green().bold());
+    println!("{} {}", "INFO:".bold().yellow(), "The mailer is the configuration used to automatically send mails.".bold());
+    println!("{} {}", "INFO:".bold().yellow(), "It can be used to verify users email addresses.".bold());
 
     let mailer_config = if read_bool("Do you wish to setup the mailer ?", false)  {
         loop {
