@@ -1,0 +1,63 @@
+Return-Path: <postmaster@forgione.fr>
+Delivered-To: thomas@forgione.fr
+Received: from localhost (HELO queue) (127.0.0.1)
+	by localhost with SMTP; 8 Feb 2019 15:38:29 +0200
+Received: from unknown (HELO output27.mail.ovh.net) (10.110.115.6)
+  by mail10.mgra1.mail.ovh.net with AES256-GCM-SHA384 encrypted SMTP; 8 Feb 2019 15:38:29 +0200
+Received: from vr8.mail.ovh.net (unknown [10.101.8.8])
+	by out27.mail.ovh.net (Postfix) with ESMTP id 43wx8j65FWz1vfG5q
+	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+Received: from in31.mail.ovh.net (unknown [10.101.4.31])
+	by vr8.mail.ovh.net (Postfix) with ESMTP id 43wx8j55sTz7FWMV
+	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+X-Comment: SPF check N/A for local connections - client-ip=213.186.33.56; helo=player729.ha.ovh.net; envelope-from=postmaster@forgione.fr; receiver=<UNKNOWN>
+Authentication-Results: in31.mail.ovh.net; dkim=none; dkim-atps=neutral
+Received: from player729.ha.ovh.net (b6.ovh.net [213.186.33.56])
+	by in31.mail.ovh.net (Postfix) with ESMTP id 43wx8j4mSBz7kd1q
+	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+Received: from forgione.fr (unknown [147.127.248.1])
+	(Authenticated sender: postmaster@forgione.fr)
+	by player729.ha.ovh.net (Postfix) with ESMTPSA id 606BC2ADEE72
+	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+Subject: Welcome to Chouette Mail
+To: <thomas@forgione.fr>
+From: <postmaster@forgione.fr>
+Date: Fri, 08 Feb 2019 14:38:12 +0100
+MIME-Version: 1.0
+Message-ID: <6e78a607-9bb1-4fbf-b436-404585f94374.lettre@localhost>
+Content-Type: multipart/mixed; boundary="yiXhUHs9WZZu1C1C0RndsVUTWn1SgW"
+X-Ovh-Tracer-Id: 9679642977922429291
+X-Ovh-Remote: 213.186.33.56 (b6.ovh.net)
+X-VR-SPAMSTATE: OK
+X-VR-SPAMSCORE: 0
+X-VR-SPAMCAUSE: gggruggvucftvghtrhhoucdtuddrgedtledrledvgdehiecutefuodetggdotefrodftvfcurfhrohhfihhlvgemucfqggfjpdevjffgvefmvefgnecuuegrihhlohhuthemucehtddtnecu
+X-Ovh-Spam-Status: OK
+X-Ovh-Spam-Reason: vr: OK; dkim: disabled; spf: disabled
+X-Ovh-Message-Type: OK
+
+
+--yiXhUHs9WZZu1C1C0RndsVUTWn1SgW
+Content-Type: multipart/alternative; boundary="Jnqwn8fflR127e4P3PfJCG8ro4mS3Y"
+
+
+--Jnqwn8fflR127e4P3PfJCG8ro4mS3Y
+Content-Type: text/plain; charset=utf-8
+
+Welcome to Chouette Mail !
+
+To activate your account, please go to the following link:
+http://localhost:8000/api/activate/Od9qxzseTJHsE2qpxYPvQMeVlk4lQFSXSXR42b6P
+
+
+--Jnqwn8fflR127e4P3PfJCG8ro4mS3Y
+Content-Type: text/html; charset=utf-8
+
+<h1>Welcome to Chouette Mail!</h1>
+
+<a href="http://localhost:8000/api/activate/Od9qxzseTJHsE2qpxYPvQMeVlk4lQFSXSXR42b6P">Click here to activate your account</a>
+
+
+--Jnqwn8fflR127e4P3PfJCG8ro4mS3Y--
+
+--yiXhUHs9WZZu1C1C0RndsVUTWn1SgW--
+
