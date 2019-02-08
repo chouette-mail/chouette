@@ -71,17 +71,17 @@ impl ServerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatabaseConfig {
     /// The user of the database.
-    user: String,
+    pub user: String,
 
     /// The name of the database.
-    database: String,
+    pub database: String,
 
     /// The password to connect to the database.
-    password: String,
+    pub password: String,
 
     /// The hostname of the database.
     #[serde(default = "localhost")]
-    hostname: String,
+    pub hostname: String,
 }
 
 impl DatabaseConfig {
@@ -147,6 +147,16 @@ pub struct Mailer {
 }
 
 impl Mailer {
+
+    /// Creates a new mailer.
+    pub fn new(require_email_validation: bool, server: String, username: String, password: String) -> Mailer {
+        Mailer {
+            require_email_validation,
+            server,
+            username,
+            password,
+        }
+    }
 
     /// Uses a mailer to send an email.
     pub fn send_mail(&self, to: &str, subject: String, text: String, html: String) -> Result<()> {

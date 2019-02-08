@@ -1,0 +1,3 @@
+This is test mail from Chouette Mail
+
+If you received this mail, it means that your e-mail account is correctly setup.
