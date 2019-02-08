@@ -80,9 +80,10 @@ impl User {
             let activation_url = format!("{}/api/activate/{}", SERVER_CONFIG.root, activation_key);
             context.insert("activation_url", &activation_url);
 
-            let content = TEMPLATES.render("mail.html", &context)?;
+            let text = TEMPLATES.render("email_address_validation.txt", &context)?;
+            let html = TEMPLATES.render("email_address_validation.html", &context)?;
 
-            mailer.send_mail(email, String::from("Welcome to Chouette Mail"), content)?;
+            mailer.send_mail(email, String::from("Welcome to Chouette Mail"), text, html)?;
 
             Ok(NewUser {
                 username: String::from(username),

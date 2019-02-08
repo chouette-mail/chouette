@@ -54,7 +54,7 @@ lazy_static! {
         .expect("Couldn't parse config file");
 
     /// The templates our server will use.
-    pub static ref TEMPLATES: tera::Tera = compile_templates!("assets/templates/*.html");
+    pub static ref TEMPLATES: tera::Tera = compile_templates!("assets/templates/*");
 }
 
 use std::{io, result};

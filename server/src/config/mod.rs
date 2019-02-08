@@ -5,8 +5,9 @@ use std::fs::File;
 use std::{io, result};
 use std::io::Read;
 
-use lettre::{EmailAddress, Envelope, SendableEmail, SmtpClient, Transport};
+use lettre::{SmtpClient, Transport};
 use lettre::smtp::authentication::Credentials;
+use lettre_email::Email;
 use serde_derive::{Serialize, Deserialize};
 use diesel::connection::Connection;
 use diesel::pg::PgConnection;
@@ -148,23 +149,22 @@ pub struct Mailer {
 impl Mailer {
 
     /// Uses a mailer to send an email.
-    pub fn send_mail(&self, to: &str, subject: String, content: String) -> Result<()> {
+    pub fn send_mail(&self, to: &str, subject: String, text: String, html: String) -> Result<()> {
 
-        let email = SendableEmail::new(
-            Envelope::new(
-                Some(EmailAddress::new(self.username.clone())?),
-                vec![EmailAddress::new(to.to_string())?],
-            )?,
-            subject,
-            content.into_bytes(),
-        );
+        let email = Email::builder()
+            .from(self.username.clone())
+            .to(to)
+            .subject(subject)
+            .text(text)
+            .html(html)
+            .build()?;
 
         let mut client = SmtpClient::new_simple(&self.server)
             .expect("Failed to create smtp client")
             .credentials(Credentials::new(self.username.clone(), self.password.clone()))
             .transport();
 
-        client.send(email)?;
+        client.send(email.into())?;
 
         Ok(())
 
