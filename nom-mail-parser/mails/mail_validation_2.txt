@@ -1,27 +1,27 @@
-Return-Path: <postmaster@forgione.fr>
-Delivered-To: thomas@forgione.fr
+Return-Path: <example@example.com>
+Delivered-To: example@example.com
 Received: from localhost (HELO queue) (127.0.0.1)
 	by localhost with SMTP; 8 Feb 2019 15:38:29 +0200
 Received: from unknown (HELO output27.mail.ovh.net) (10.110.115.6)
   by mail10.mgra1.mail.ovh.net with AES256-GCM-SHA384 encrypted SMTP; 8 Feb 2019 15:38:29 +0200
 Received: from vr8.mail.ovh.net (unknown [10.101.8.8])
 	by out27.mail.ovh.net (Postfix) with ESMTP id 43wx8j65FWz1vfG5q
-	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+	for <example@example.com>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
 Received: from in31.mail.ovh.net (unknown [10.101.4.31])
 	by vr8.mail.ovh.net (Postfix) with ESMTP id 43wx8j55sTz7FWMV
-	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
-X-Comment: SPF check N/A for local connections - client-ip=213.186.33.56; helo=player729.ha.ovh.net; envelope-from=postmaster@forgione.fr; receiver=<UNKNOWN>
+	for <example@example.com>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+X-Comment: SPF check N/A for local connections - client-ip=213.186.33.56; helo=player729.ha.ovh.net; envelope-from=example@example.com; receiver=<UNKNOWN>
 Authentication-Results: in31.mail.ovh.net; dkim=none; dkim-atps=neutral
 Received: from player729.ha.ovh.net (b6.ovh.net [213.186.33.56])
 	by in31.mail.ovh.net (Postfix) with ESMTP id 43wx8j4mSBz7kd1q
-	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
-Received: from forgione.fr (unknown [147.127.248.1])
-	(Authenticated sender: postmaster@forgione.fr)
+	for <example@example.com>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+Received: from example.com (unknown [147.127.248.1])
+	(Authenticated sender: example@example.com)
 	by player729.ha.ovh.net (Postfix) with ESMTPSA id 606BC2ADEE72
-	for <thomas@forgione.fr>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
+	for <example@example.com>; Fri,  8 Feb 2019 13:38:29 +0000 (UTC)
 Subject: Welcome to Chouette Mail
-To: <thomas@forgione.fr>
-From: <postmaster@forgione.fr>
+To: <example@example.com>
+From: <example@example.com>
 Date: Fri, 08 Feb 2019 14:38:12 +0100
 MIME-Version: 1.0
 Message-ID: <6e78a607-9bb1-4fbf-b436-404585f94374.lettre@localhost>
