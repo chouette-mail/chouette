@@ -56,7 +56,9 @@ named!(header_value<&[u8], String>,
         ),
         |(mut x, y): (Vec<String>, String)| {
             x.push(y);
-            x.join("")
+            let ret = x.join("");
+            println!("HEADER: {}", ret);
+            ret
         }
     )
 );
@@ -86,7 +88,7 @@ named!(multipart_alternative<&[u8], Vec<u8>>,
     map!(
         terminated!(
             preceded!(
-                tag!("multipart/alternative; boundary="),
+                preceded!(preceded!(tag!("multipart/"), take_until_and_consume!("; ")), tag!("boundary=")),
                 delimited!(char!('"'), take_until!("\""), char!('"'))
             ),
             tag!("\r\n")
@@ -146,7 +148,10 @@ named!(parse_mail<&[u8], Mail>,
 named!(parse_multi_mail<&[u8], Mail>,
     do_parse!(
         h: headers >>
-        _dummy: take_until_and_consume!(&h.boundary().unwrap()[..]) >>
+        _dummy: take_until_and_consume!({
+            println!("{:?}", h.boundary());
+            &h.boundary().unwrap()[..]
+        }) >>
         tag!("\r\n") >>
         printable: take_until_and_consume!(&h.boundary().unwrap()[..]) >>
         tag!("\r\n") >>

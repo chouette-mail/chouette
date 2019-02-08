@@ -1,0 +1,58 @@
+Return-Path: <from@example.com>
+Delivered-To: to@example.com
+Received: from localhost (HELO queue) (127.0.0.1)
+	by localhost with SMTP; 8 Feb 2019 12:18:41 +0200
+Received: from unknown (HELO output2.mail.ovh.net) (10.108.57.43)
+  by mail10.mgra1.mail.ovh.net with AES256-GCM-SHA384 encrypted SMTP; 8 Feb 2019 12:18:41 +0200
+Received: from vr13.mail.ovh.net (unknown [10.101.8.13])
+	by out2.mail.ovh.net (Postfix) with ESMTP id 43wrk61hLVz7fGfH
+	for <to@example.com>; Fri,  8 Feb 2019 10:18:38 +0000 (UTC)
+Received: from in10.mail.ovh.net (unknown [10.101.4.10])
+	by vr13.mail.ovh.net (Postfix) with ESMTP id 43wrk60r2LzwPGt
+	for <to@example.com>; Fri,  8 Feb 2019 10:18:38 +0000 (UTC)
+X-Comment: SPF check N/A for local connections - client-ip=213.251.189.206; helo=player739.ha.ovh.net; envelope-from=from@example.com; receiver=<UNKNOWN>
+Authentication-Results: in10.mail.ovh.net; dkim=none; dkim-atps=neutral
+Received: from player739.ha.ovh.net (gw6.ovh.net [213.251.189.206])
+	by in10.mail.ovh.net (Postfix) with ESMTP id 43wrk602MrzsR6H
+	for <to@example.com>; Fri,  8 Feb 2019 10:18:37 +0000 (UTC)
+Received: from example.com (unknown [147.127.121.24])
+	(Authenticated sender: from@example.com)
+	by player739.ha.ovh.net (Postfix) with ESMTPSA id 82BCC2A1F698
+	for <to@example.com>; Fri,  8 Feb 2019 10:18:37 +0000 (UTC)
+Subject: [SPAM] Welcome to Chouette Mail
+To: <to@example.com>
+From: <from@example.com>
+Date: Fri, 08 Feb 2019 11:18:17 +0100
+MIME-Version: 1.0
+Message-ID: <eef8a6e0-80ed-49d9-ab88-8186ff78e317.lettre@localhost>
+Content-Type: multipart/mixed; boundary="oZynvQGHm7W6Sgq6qoT5hSnU5kvE7D"
+X-Ovh-Tracer-Id: 6304195055093789035
+X-Ovh-Remote: 213.251.189.206 (gw6.ovh.net)
+X-VR-SPAMSTATE: SPAM
+X-VR-SPAMSCORE: 300
+X-VR-SPAMCAUSE: gggruggvucftvghtrhhoucdtuddrgedtledrledvgdduhecutefuodetggdotefrodftvfcurfhrohhfihhlvgemucfqggfjpdevjffgvefmvefgnecuuegrihhlohhuthemucehtddtnecuogfuphgrmhgsohhtqdetgedtkedqtdelucdlfedttddm
+X-Ovh-Spam-Status: SPAM
+X-Ovh-Spam-Reason: vr: SPAM; dkim: disabled; spf: disabled
+X-Ovh-Message-Type: SPAM
+X-Spam-Tag: YES
+
+
+--oZynvQGHm7W6Sgq6qoT5hSnU5kvE7D
+Content-Type: text/plain; charset=utf-8
+
+Welcome to Chouette Mail !
+
+To activate your account, please go to the following link:
+http://localhost:8000/api/activate/VlDysIRzxtVIH8hiqaNMski25gFtKk5hddXXWOw5
+
+
+--oZynvQGHm7W6Sgq6qoT5hSnU5kvE7D
+Content-Type: text/html; charset=utf-8
+
+<h1>Welcome to Chouette Mail!</h1>
+
+<a href="http://localhost:8000/api/activate/VlDysIRzxtVIH8hiqaNMski25gFtKk5hddXXWOw5">Click here to activate your account</a>
+
+
+--oZynvQGHm7W6Sgq6qoT5hSnU5kvE7D--
+
