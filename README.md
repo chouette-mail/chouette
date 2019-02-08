@@ -10,13 +10,24 @@ Chouette mail is a mail client consisting in a backend written in
 
 This is a work in progress, and for the moment, not many features.
 
-### Building
+## Table of contents
+
+  - [Building](#building)
+    - [Building the client](#client)
+    - [Building the server](#server)
+      - [Installating Rust](#install-rust)
+      - [Setting up the database](#database-setup)
+      - [Configuring the server](#configuration)
+  - [Running Chouette Mail](#running)
+  - [Developping](#developping)
+
+## Building
 
 The following sections explain how to build the client and the server. If you
 have any problem building anything, feel free to open an
 [issue](https://github.com/chouette-mail/chouette/issues/new).
 
-#### Client
+### Client
 
 You'll need to intall [elm](https://guide.elm-lang.org/install.html) in order
 to be able to build the client.
@@ -27,10 +38,10 @@ We recommend that you install elm with
 Once `elm` is installed, you should be able to run `make client-dev` in the
 root of the repository to build the client.
 
-#### Server
+### Server
 
 
-##### Installation
+#### Install Rust
 
 You'll need to install [rust-nightly](https://www.rust-lang.org/tools/install)
 in order to be able to build the server. We recommend that you install rust
@@ -44,7 +55,7 @@ You have three tways to build the server with nightly:
     `cargo build` freely,
   - or you can `cargo +nightly build` in the server directory.
 
-##### Database setup
+#### Database setup
 
 The server requires a postgresql database. The best way is to create a postgres
 user and a database for it. On most operating systems, you need to use the
@@ -74,7 +85,7 @@ exit
 
 to get back to your normal user.
 
-##### Configuration
+#### Configuration
 
 Once you've created the database, you can run the `chouette-setup` tool that
 will prompt help to configure the server:
@@ -99,13 +110,13 @@ running:
 diesel migration run
 ```
 
-### Running
+## Running
 
 Once you've built and configured everything, you just go to the server
 directory, and you run `cargo run` or `cargo +nightly run` depending on whether
 you overrode the toolchain.
 
-### Developping
+## Developping
 
 You can install `elm-live` and run `make client-watch` at the root of the
 repository. When a change will be made to the client, `elm-live` will rebuild
