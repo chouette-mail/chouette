@@ -155,8 +155,7 @@ impl Mailer {
             .from(self.username.clone())
             .to(to)
             .subject(subject)
-            .text(text)
-            .html(html)
+            .alternative(html, text)
             .build()?;
 
         let mut client = SmtpClient::new_simple(&self.server)
