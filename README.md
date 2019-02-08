@@ -29,6 +29,9 @@ root of the repository to build the client.
 
 #### Server
 
+
+##### Installation
+
 You'll need to install [rust-nightly](https://www.rust-lang.org/tools/install)
 in order to be able to build the server. We recommend that you install rust
 with rustup, so you can install rust nightly by running
@@ -41,11 +44,66 @@ You have three tways to build the server with nightly:
     `cargo build` freely,
   - or you can `cargo +nightly build` in the server directory.
 
+##### Database setup
+
+The server requires a postgresql database. The best way is to create a postgres
+user and a database for it. On most operating systems, you need to use the
+postgres user:
+
+```
+sudo su postgres
+```
+
+Once that's done, you can create a user like this:
+
+```
+createuser -W <username>
+```
+
+and then, create a database for the user:
+
+```
+createdb <dbname> -O <username>
+```
+
+You can then run
+
+```
+exit
+```
+
+to get back to your normal user.
+
+##### Configuration
+
+Once you've created the database, you can run the `chouette-setup` tool that
+will prompt help to configure the server:
+
+```
+cargo run --bin chouette-setup
+```
+
+It will help you use the right settings, and check that everything is correct.
+
+The last thing that needs to be done is it initialize the database. For this,
+you will need `diesel_cli`. You can install it like so:
+
+```
+cargo install diesel_cli --no-default-features --features postgres
+```
+
+Once `diesel_cli` is installed, you will be able to initialize the database by
+running:
+
+```
+diesel migration run
+```
+
 ### Running
 
-Once you've built everything, you just go to the server directory, and you run
-`cargo run` or `cargo +nightly run` depending on whether you overrode the
-toolchain.
+Once you've built and configured everything, you just go to the server
+directory, and you run `cargo run` or `cargo +nightly run` depending on whether
+you overrode the toolchain.
 
 ### Developping
 
