@@ -31,7 +31,6 @@ named!(decode_base64<&[u8], String>,
             for i in x {
                 decoded.push_str(std::str::from_utf8(&base64::decode(i).unwrap()).unwrap());
             }
-            println!("{:?}", decoded);
             decoded
         }
     )
@@ -57,7 +56,6 @@ named!(header_value<&[u8], String>,
         |(mut x, y): (Vec<String>, String)| {
             x.push(y);
             let ret = x.join("");
-            println!("HEADER: {}", ret);
             ret
         }
     )
@@ -129,45 +127,41 @@ named!(headers<&[u8], Headers >,
     map!(many0!(header), Headers)
 );
 
-/// Parses a single body mail.
+/// Parses a mail.
 named!(parse_mail<&[u8], Mail>,
     do_parse!(
         h: headers >>
-        tag!("\r\n") >>
-        content: rest >>
-        ({
-            Mail {
-                headers: h,
-                body: Body::Content(std::str::from_utf8(content).unwrap().to_string()),
-            }
-        })
-    )
-);
 
-/// Parses a multi body mail, containing only single bodies.
-named!(parse_multi_mail<&[u8], Mail>,
-    do_parse!(
-        h: headers >>
-        _dummy: take_until_and_consume!({
-            println!("{:?}", h.boundary());
+        // Multipart part
+        _dummy: cond!(h.boundary().is_some(), take_until_and_consume!({
             &h.boundary().unwrap()[..]
-        }) >>
-        tag!("\r\n") >>
-        printable: take_until_and_consume!(&h.boundary().unwrap()[..]) >>
-        tag!("\r\n") >>
-        html: take_until_and_consume!(&h.boundary().unwrap()[..]) >>
-        ({
-            Mail {
-                headers: h,
-                body: Body::Multi(vec![parse_mail(printable)?.1, parse_mail(html)?.1]),
+        })) >>
+        printable: cond!(h.boundary().is_some(), many0!(preceded!(tag!("\r\n"), take_until_and_consume!(&h.boundary().unwrap()[..])))) >>
+
+        // Single part
+        cond!(h.boundary().is_none(), tag!("\r\n")) >>
+        content: cond!(h.boundary().is_none(), rest) >>
+        (
+            if let Some(printable) = printable {
+                Mail {
+                    headers: h,
+                    body: Body::Multi(printable.iter().map(|x| {
+                        parse_mail(x).unwrap().1
+                    }).collect()),
+                }
+            } else {
+                Mail {
+                    headers: h,
+                    body: Body::Content(std::str::from_utf8(content.unwrap()).unwrap().to_string()),
+                }
             }
-        })
+        )
     )
 );
 
 /// Parses a mail.
 pub fn parse(bytes: &[u8]) -> Result<Mail> {
-    Ok(parse_multi_mail(bytes)?.1)
+    Ok(parse_mail(bytes)?.1)
 }
 
 /// Parses only the headers of a mail.

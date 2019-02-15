@@ -28,3 +28,14 @@ fn parse_mail_3() -> Result<'static, ()> {
 
     Ok(())
 }
+
+#[test]
+fn parse_mail_4() -> Result<'static, ()> {
+    let mail = parse(include_bytes!("../mails/mail_validation_2.txt"))?;
+
+    assert_eq!(
+        mail.subject(),
+        Some(&String::from("Welcome to Chouette Mail")));
+
+    Ok(())
+}
