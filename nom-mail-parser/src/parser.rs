@@ -2,7 +2,7 @@
 
 use std::result;
 use nom::rest;
-use crate::{Result, ContentType, ContentTransferEncoding, Header, Headers, Mail, Body};
+use crate::{Error, Result, ContentType, ContentTransferEncoding, Header, Headers, Mail, Body};
 
 /// Parses a boundary appending two dashes in front of it.
 fn parse_boundary(input: &[u8]) -> Vec<u8> {
@@ -12,11 +12,11 @@ fn parse_boundary(input: &[u8]) -> Vec<u8> {
 }
 
 /// Parses a content transfer encoding.
-fn parse_content_transfer_encoding(input: &[u8]) -> result::Result<ContentTransferEncoding, ()> {
+fn parse_content_transfer_encoding(input: &[u8]) -> result::Result<ContentTransferEncoding, Error> {
     match input {
         b"quoted-printable" => Ok(ContentTransferEncoding::QuotedPrintable),
         b"base64" => Ok(ContentTransferEncoding::Base64),
-        _ => Err(()),
+        _ => Err(Error::UnknownContentTransferEncoding),
     }
 }
 
@@ -128,7 +128,7 @@ named!(headers<&[u8], Headers >,
 );
 
 /// Parses a mail.
-named!(parse_mail<&[u8], Mail>,
+named!(parse_mail<&[u8], Result<Mail>>,
     do_parse!(
         h: headers >>
 
@@ -142,26 +142,57 @@ named!(parse_mail<&[u8], Mail>,
         cond!(h.boundary().is_none(), tag!("\r\n")) >>
         content: cond!(h.boundary().is_none(), rest) >>
         (
-            if let Some(printable) = printable {
-                Mail {
-                    headers: h,
-                    body: Body::Multi(printable.iter().map(|x| {
-                        parse_mail(x).unwrap().1
-                    }).collect()),
-                }
-            } else {
-                Mail {
-                    headers: h,
-                    body: Body::Content(std::str::from_utf8(content.unwrap()).unwrap().to_string()),
-                }
-            }
+            finalize(h, printable, content)
         )
     )
 );
 
+/// The last part of our mail parser.
+fn finalize(h: Headers, printable: Option<Vec<&[u8]>>, content: Option<&[u8]>) -> Result<Mail> {
+    if let Some(printable) = printable {
+
+        let mut bodies = vec![];
+
+        for mail in printable {
+            bodies.push(parse_mail(mail)?.1?);
+        }
+
+        Ok(Mail {
+            headers: h,
+            body: Body::Multi(bodies),
+        })
+
+    } else {
+
+        let content = match h.content_transfer_encoding() {
+            Some(ContentTransferEncoding::Base64) => {
+                let content = content.unwrap();
+                let mut buffer = vec![];
+                for byte in content {
+                    match *byte as char {
+                        '=' => break,
+                        '\r' | '\n' => continue,
+                        _ => buffer.push(*byte),
+                    }
+                }
+                std::str::from_utf8(&base64::decode(&buffer)?)?.to_string()
+            }
+            _ =>
+                std::str::from_utf8(content.unwrap())?.to_string(),
+        };
+
+        let body = Body::Content(content);
+
+        Ok(Mail {
+            headers: h,
+            body,
+        })
+    }
+}
+
 /// Parses a mail.
 pub fn parse(bytes: &[u8]) -> Result<Mail> {
-    Ok(parse_mail(bytes)?.1)
+    Ok(parse_mail(bytes)?.1?)
 }
 
 /// Parses only the headers of a mail.

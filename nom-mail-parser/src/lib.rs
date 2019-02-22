@@ -14,14 +14,47 @@ pub use parser::parse_headers;
 #[cfg(test)]
 mod tests;
 
+macro_rules! impl_from_error {
+    ($type: ty, $variant: path, $from: ty) => {
+        impl From<$from> for $type {
+            fn from(e: $from) -> $type {
+                $variant(e)
+            }
+        }
+    }
+}
+
 /// Public type of error of this crate.
-pub type Error<'a> = nom::Err<&'a [u8]>;
+#[derive(Debug)]
+pub enum Error {
+    /// An error while running nom parser.
+    NomParseError,
+
+    /// The content transfer encoding has an unknown value.
+    UnknownContentTransferEncoding,
+
+    /// An error while decoding a base64 encoded content.
+    Base64DecodeError(base64::DecodeError),
+
+    /// An errir while decoding an utf8 string.
+    Utf8Error(std::str::Utf8Error),
+}
+
+impl<'a> From<nom::Err<&'a [u8]>> for Error {
+    fn from(_: nom::Err<&'a [u8]>) -> Error {
+        Error::NomParseError
+    }
+}
+
+impl_from_error!(Error, Error::Base64DecodeError, base64::DecodeError);
+impl_from_error!(Error, Error::Utf8Error, std::str::Utf8Error);
+
 
 /// Public type of result of this crate.
-pub type Result<'a, T> = result::Result<T, Error<'a>>;
+pub type Result<T> = result::Result<T, Error>;
 
 /// The different content types a mail can have.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ContentType {
     /// A plain text mail.
     TextPlain,
@@ -96,6 +129,42 @@ impl Headers {
         None
     }
 
+    /// Returns the from header of the mail, if any.
+    pub fn from(&self) -> Option<&String> {
+        for header in &self.0 {
+            match header {
+                Header::From(s) => return Some(s),
+                _ => (),
+            }
+        }
+
+        None
+    }
+
+    /// Returns the content type header of the mail, if any.
+    pub fn content_type(&self) -> Option<&ContentType> {
+        for header in &self.0 {
+            match header {
+                Header::ContentType(s) => return Some(s),
+                _ => (),
+            }
+        }
+
+        None
+    }
+
+    /// Returns the content transfer encoding header of the mail, if any.
+    pub fn content_transfer_encoding(&self) -> Option<&ContentTransferEncoding> {
+        for header in &self.0 {
+            match header {
+                Header::ContentTransferEncoding(s) => return Some(s),
+                _ => (),
+            }
+        }
+
+        None
+    }
+
     /// Looks for the boundary in the header of a mail.
     ///
     /// Returns none if it is not a multipart mail.
@@ -126,5 +195,53 @@ impl Mail {
     pub fn subject(&self) -> Option<&String> {
         self.headers.subject()
     }
+
+    /// Returns the from field of the mail, if any.
+    pub fn from(&self) -> Option<&String> {
+        self.headers.from()
+    }
+
+    /// Returns the content type field of the mail, if any.
+    pub fn content_type(&self) -> Option<&ContentType> {
+        self.headers.content_type()
+    }
+
+    /// Returns the plain body of the mail if any.
+    pub fn plain_body(&self) -> Option<&String> {
+        match &self.body {
+            Body::Content(s) if self.content_type() == Some(&ContentType::TextPlain) => return Some(s),
+            Body::Multi(mails) => {
+                for mail in mails {
+                    match (mail.content_type(), mail.plain_body()) {
+                        (Some(&ContentType::TextPlain), Some(body)) => return Some(body),
+                        _ => (),
+                    }
+                }
+            },
+            _ => return None,
+        }
+
+        None
+    }
+
+    /// Returns the html body of the mail if any.
+    pub fn html_body(&self) -> Option<&String> {
+        match &self.body {
+            Body::Content(s) if self.content_type() == Some(&ContentType::TextHtml) => return Some(s),
+            Body::Multi(mails) => {
+                for mail in mails {
+                    match (mail.content_type(), mail.html_body()) {
+                        (Some(&ContentType::TextHtml), Some(body)) => return Some(body),
+                        _ => (),
+                    }
+                }
+            },
+            _ => return None,
+        }
+
+        None
+    }
+
+
 }
 
