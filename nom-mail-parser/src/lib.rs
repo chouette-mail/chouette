@@ -25,7 +25,7 @@ macro_rules! impl_from_error {
 }
 
 /// Public type of error of this crate.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     /// An error while running nom parser.
     NomParseError,
@@ -69,7 +69,7 @@ pub enum ContentType {
 }
 
 /// The content transfer encoding of a mail.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ContentTransferEncoding {
     /// A quoted printable content.
     QuotedPrintable,
@@ -79,7 +79,7 @@ pub enum ContentTransferEncoding {
 }
 
 /// The different headers that appear in a mail.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Header {
     /// The subject of the mail.
     Subject(String),
@@ -101,7 +101,7 @@ pub enum Header {
 }
 
 /// The different types of body a mail can have.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Body {
     /// It can be some raw content.
     Content(String),
@@ -113,7 +113,7 @@ pub enum Body {
 /// A collection of headers.
 ///
 /// Provides some useful functions.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Headers(pub Vec<Header>);
 
 impl Headers {
@@ -181,7 +181,7 @@ impl Headers {
 }
 
 /// The struct returned from our parse function.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Mail {
     /// The headers of the mail.
     headers: Headers,
