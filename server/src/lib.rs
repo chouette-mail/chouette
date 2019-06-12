@@ -103,6 +103,9 @@ pub enum Error {
     /// An error occured while trying to send a mail.
     SendMailError(lettre::smtp::error::Error),
 
+    /// An error while building a mail.
+    BuildMailError(lettre_email::error::Error),
+
     /// An error occured while rendering a template.
     TeraError(tera::Error),
 }
@@ -117,6 +120,7 @@ impl_from_error!(Error, Error::SerdeJsonError, serde_json::error::Error);
 // impl_from_error!(Error, Error::ParseEmailError, mailbox::mail::Error);
 impl_from_error!(Error, Error::MailError, failure::Error);
 impl_from_error!(Error, Error::SendMailError, lettre::smtp::error::Error);
+impl_from_error!(Error, Error::BuildMailError, lettre_email::error::Error);
 impl_from_error!(Error, Error::TeraError, tera::Error);
 
 impl<T> From<(imap::error::Error, T)> for Error {

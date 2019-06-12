@@ -105,7 +105,7 @@ impl ImapAccount {
     pub fn fetch_mailboxes(&self) -> Result<Vec<Mailbox>> {
         let mut session = self.login()?;
 
-        Ok(session.list(Some("/"), Some("*"))?
+        Ok(session.list(Some("*"), Some("*"))?
             .into_iter()
             .map(Mailbox::from)
             .collect())

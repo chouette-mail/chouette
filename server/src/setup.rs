@@ -1,3 +1,5 @@
+#![feature(option_flattening)]
+
 use std::fs::File;
 use std::fmt::Debug;
 use std::io::{stdout, stdin, Write};
@@ -9,19 +11,6 @@ use rpassword::read_password_from_tty;
 
 use chouette::CONFIG_FILE_LOCATION;
 use chouette::config::{ServerConfig, DatabaseConfig, Mailer};
-
-trait Flatten<T> {
-    fn flatten(self) -> Option<T>;
-}
-
-impl<T> Flatten<T> for Option<Option<T>> {
-    fn flatten(self) -> Option<T> {
-        match self {
-            Some(Some(x)) => Some(x),
-            _ => None
-        }
-    }
-}
 
 fn unwrap<T, E>(param: Result<T, E>) -> T where E: Debug {
     match param {
